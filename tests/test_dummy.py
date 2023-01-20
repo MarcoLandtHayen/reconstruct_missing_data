@@ -1,4 +1,5 @@
 import pytest
+
 from reconstruct_missing_data.dummy_module import dummy_foo
 
 
