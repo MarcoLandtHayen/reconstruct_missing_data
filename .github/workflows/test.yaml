@@ -2,7 +2,7 @@ name: Tests
 on:
   push:
     branches:
-      - "master"
+      - "main"
   pull_request:
     branches:
       - "*"
@@ -35,7 +35,7 @@ jobs:
           # channel-priority: true
           environment-file: ci/environment-py${{ matrix.python-version }}.yml
 
-          activate-environment: test_env_reconstruct_missing_data
+          activate-environment: test_env_reconstruct-missing-data
           use-only-tar-bz2: true # IMPORTANT: This needs to be set for caching to work properly!
       - name: Set up conda environment
         shell: bash -l {0}
