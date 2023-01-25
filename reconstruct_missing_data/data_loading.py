@@ -243,7 +243,7 @@ def clone_data(data, augmentation_factor):
     return extended_data
 
 
-def create_missing_mask(data, mask_type, missing_type, missing_min, missing_max):
+def create_missing_mask(data, mask_type, missing_type, missing_min, missing_max, seed):
     
     """Create mask for missing values fitting complete data's dimensions.
     Missing values are masked as zero (zero-inflated).
@@ -263,6 +263,8 @@ def create_missing_mask(data, mask_type, missing_type, missing_min, missing_max)
         For mask_type='fixed', both values are set identically and give the desired amount of missing values.
         For mask_type='variable' and missing_type='discrete', also set both values identically to give the discrete amount of missing values.
         Only for mask_type='variable' with missing_type='range', set the minimum and maximum relative amount of missing values, according to desired range.
+    seed: int
+        Seed for random number generator, for reproducibility.
    
     Returns
     -------
@@ -273,6 +275,7 @@ def create_missing_mask(data, mask_type, missing_type, missing_min, missing_max)
     if mask_type=='fixed':
         
         # Get single mask of missing values and repeat this mask for all samples:
+        np.random.seed(seed)
         missing_mask_single = (np.random.uniform(low=0.0, high=1.0, size=(1, data.shape[1], data.shape[2]))>missing_min)
         missing_mask = np.repeat(missing_mask_single,data.shape[0],axis=0)
         
@@ -295,6 +298,7 @@ def split_and_scale_data(data, missing_mask, train_val_split, scale_to):
     
     """Optionally scale or normalize values, according to statistics obtained from training data.
     Then apply mask for missing values and split data into training and validation sets.
+    Existing NaN values are set to zero.
 
     Parameters
     ----------
@@ -321,6 +325,12 @@ def split_and_scale_data(data, missing_mask, train_val_split, scale_to):
     # Optionally scale inputs to [-1,1] or [0,1], according to min/max obtained from only train inputs. 
     # Or normalize inputs to have zero mean and unit variance. 
 
+    # Look for NaN values:
+    invalid_gridpoints = np.isnan(data)
+    
+    # Set NaN values to zero:
+    data[invalid_gridpoints] = 0
+    
     # Remenber min/max used for scaling.
     train_min = np.min(data[:n_train])
     train_max = np.max(data[:n_train])
@@ -345,6 +355,9 @@ def split_and_scale_data(data, missing_mask, train_val_split, scale_to):
     # Get sparse data by applying given mask for missing values to scaled/normalized data:
     data_sparse_scaled = data_scaled * missing_mask
 
+    # Again set former NaN values to zero, after scaling / normalizing:
+    data_scaled[invalid_gridpoints] = 0
+    data_sparse_scaled[invalid_gridpoints] = 0
         
     ## Split inputs and targets:
     train_input = data_sparse_scaled[:n_train]
