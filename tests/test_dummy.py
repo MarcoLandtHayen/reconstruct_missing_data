@@ -1,12 +1,15 @@
-import pytest
-
 ## Working on nesh with Container image py-da-tf-shap.sif:
 import sys
-sys.path.append('./reconstruct_missing_data')
+
+import pytest
+
 from dummy_module import dummy_foo
 
+
+sys.path.append("./reconstruct_missing_data")
+
 ## Working on nesh with Container image reconstruct_missing_data_latest.sif:
-# from reconstruct_missing_data.dummy_module import dummy_foo 
+# from reconstruct_missing_data.dummy_module import dummy_foo
 
 
 def test_dummy():

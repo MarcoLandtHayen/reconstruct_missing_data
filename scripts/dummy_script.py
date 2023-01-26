@@ -1,9 +1,13 @@
-from reconstruct_missing_data.dummy_module import dummy_foo
+import os
+
+from json import dump, load
+from pathlib import Path
+
 import numpy as np
 import xarray as xr
-from pathlib import Path
-from json import dump, load
-import os
+
+from reconstruct_missing_data.dummy_module import dummy_foo
+
 
 print(os.getcwd())
 
@@ -15,22 +19,22 @@ slp_path_CESM = "climate_index_collection/data/raw/2022-08-22/CESM/B1850WCN_f19g
 slp_FOCI = xr.open_dataset(slp_path_FOCI)
 slp_CESM = xr.open_dataset(slp_path_CESM)
 
-print(slp_FOCI.dims['lon'])
-print(slp_CESM.dims['lon'])
+print(slp_FOCI.dims["lon"])
+print(slp_CESM.dims["lon"])
 
-dummy_path = Path('GitGeomar/marco-landt-hayen/reconstruct_missing_data/results')
+dummy_path = Path("GitGeomar/marco-landt-hayen/reconstruct_missing_data/results")
 
-# Create directory to store results: Raise error, if path already exists, to avoid overwriting existing results. 
+# Create directory to store results: Raise error, if path already exists, to avoid overwriting existing results.
 os.makedirs(dummy_path, exist_ok=True)
-    
-model_config = 'gpu_config'
-source = 'test_source'
+
+model_config = "gpu_config"
+source = "test_source"
 
 # Store parameters as json:
 parameters = {
-    'model_config': model_config,
-    'source': source,
+    "model_config": model_config,
+    "source": source,
 }
 
-with open(dummy_path / 'parameters.json', 'w') as f:
+with open(dummy_path / "parameters.json", "w") as f:
     dump(parameters, f)

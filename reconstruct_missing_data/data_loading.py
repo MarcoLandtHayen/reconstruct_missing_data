@@ -1,14 +1,16 @@
+## Working on nesh with Container image py-da-tf-shap.sif:
+import sys
+
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import xarray as xr
 
-
-## Working on nesh with Container image py-da-tf-shap.sif:
-import sys
-sys.path.append('./reconstruct_missing_data')
 from timestamp_handling import fix_monthly_time_stamps
+
+
+sys.path.append("./reconstruct_missing_data")
 
 ## Working on nesh with Container image reconstruct_missing_data_latest.sif:
 # from .timestamp_handling import fix_monthly_time_stamps
@@ -186,7 +188,7 @@ def mask_ocean_only_vars(data_set, get_mask_from="sea-surface-salinity"):
 def get_anomalies(feature, data_set):
     """Reduce data set by selecting single feature. For this feature, compute anomalies by subtracting seasonal cycle
     Use the whole time span as climatology.
-    
+
     Parameters
     ----------
     feature: string
@@ -200,18 +202,18 @@ def get_anomalies(feature, data_set):
         Obtained anomalies for selected feature.
 
     """
-    
+
     # Select single feature:
     data = data_set[feature]
 
     # Compute anomalies, using whole time span as climatology:
     data = data.groupby("time.month") - data.groupby("time.month").mean("time")
-    
+
     return data.values
-    
+
 
 def clone_data(data, augmentation_factor):
-    
+
     """Clone each data sample multiple times, keeping the original order.
     Having e.g. three samples A,B,C, the resulting cloned collection with augmentation_factor=2 is: A,A,B,B,C,C.
 
@@ -221,7 +223,7 @@ def clone_data(data, augmentation_factor):
         Data set containing samples to be cloned.
     augmentation_factor: int
         Number of times, each sample is to be cloned.
-   
+
     Returns
     -------
     numpy.ndarray
@@ -229,22 +231,24 @@ def clone_data(data, augmentation_factor):
     """
 
     # Initialize storage for extended data set. Dimension: (#samples * factor, latitude, longitude)
-    extended_data = np.zeros((data.shape[0]*augmentation_factor, data.shape[1], data.shape[2]))
-    
+    extended_data = np.zeros(
+        (data.shape[0] * augmentation_factor, data.shape[1], data.shape[2])
+    )
+
     # Loop over samples:
     for i in range(len(data)):
-        
+
         # Loop over augmentation_facor:
         for j in range(augmentation_factor):
-            
+
             # Store sample in extended data set:
-            extended_data[i*augmentation_factor+j,:,:] = data[i,:,:]
-            
+            extended_data[i * augmentation_factor + j, :, :] = data[i, :, :]
+
     return extended_data
 
 
 def create_missing_mask(data, mask_type, missing_type, missing_min, missing_max, seed):
-    
+
     """Create mask for missing values fitting complete data's dimensions.
     Missing values are masked as zero (zero-inflated).
 
@@ -265,37 +269,42 @@ def create_missing_mask(data, mask_type, missing_type, missing_min, missing_max,
         Only for mask_type='variable' with missing_type='range', set the minimum and maximum relative amount of missing values, according to desired range.
     seed: int
         Seed for random number generator, for reproducibility.
-   
+
     Returns
     -------
     boolean
         Mask for missing values.
     """
-    
-    if mask_type=='fixed':
-        
+
+    if mask_type == "fixed":
+
         # Get single mask of missing values and repeat this mask for all samples:
         np.random.seed(seed)
-        missing_mask_single = (np.random.uniform(low=0.0, high=1.0, size=(1, data.shape[1], data.shape[2]))>missing_min)
-        missing_mask = np.repeat(missing_mask_single,data.shape[0],axis=0)
-        
-    elif mask_type=='variable':
+        missing_mask_single = (
+            np.random.uniform(low=0.0, high=1.0, size=(1, data.shape[1], data.shape[2]))
+            > missing_min
+        )
+        missing_mask = np.repeat(missing_mask_single, data.shape[0], axis=0)
+
+    elif mask_type == "variable":
 
         # Initialize mask from random uniform distribution in [0,1]:
         missing_mask = np.random.uniform(low=0.0, high=1.0, size=data.shape)
-        
+
         # Initialize another mask from random uniform distribution in the desired range of missing values:
-        missing_range = np.random.uniform(low=missing_min, high=missing_max, size=data.shape[0])
-        
+        missing_range = np.random.uniform(
+            low=missing_min, high=missing_max, size=data.shape[0]
+        )
+
         # Apply range mask to set amount of missing values for each sample with loop over samples:
         for i in range(data.shape[0]):
-            missing_mask[i] = (missing_mask[i] >= missing_range[i])        
-   
+            missing_mask[i] = missing_mask[i] >= missing_range[i]
+
     return missing_mask
 
 
 def split_and_scale_data(data, missing_mask, train_val_split, scale_to):
-    
+
     """Optionally scale or normalize values, according to statistics obtained from training data.
     Then apply mask for missing values and split data into training and validation sets.
     Existing NaN values are set to zero.
@@ -310,27 +319,27 @@ def split_and_scale_data(data, missing_mask, train_val_split, scale_to):
         Relative amount of training data.
     scale_to: string
         Specifies the desired scaling. Choose to scale inputs to [-1,1] ('one_one') or [0,1] ('zero_one') or 'norm' to normalize inputs or 'no' scaling.
-   
+
     Returns
     -------
     train_input, val_input, train_target, val_target: numpy.ndarray
         Data sets containing training and validation inputs and targets, respectively.
     train_min, train_max, train_mean, train_std: float
-        Statistics obtained from training data: Minimum, maximum, mean and standard deviation, respectively.    
+        Statistics obtained from training data: Minimum, maximum, mean and standard deviation, respectively.
     """
-   
+
     # Get number of train samples:
     n_train = int(len(data) * train_val_split)
 
-    # Optionally scale inputs to [-1,1] or [0,1], according to min/max obtained from only train inputs. 
-    # Or normalize inputs to have zero mean and unit variance. 
+    # Optionally scale inputs to [-1,1] or [0,1], according to min/max obtained from only train inputs.
+    # Or normalize inputs to have zero mean and unit variance.
 
     # Look for NaN values:
     invalid_gridpoints = np.isnan(data)
-    
+
     # Set NaN values to zero:
     data[invalid_gridpoints] = 0
-    
+
     # Remenber min/max used for scaling.
     train_min = np.min(data[:n_train])
     train_max = np.max(data[:n_train])
@@ -340,15 +349,15 @@ def split_and_scale_data(data, missing_mask, train_val_split, scale_to):
     train_std = np.std(data[:n_train])
 
     # Scale or normalize inputs depending on desired scaling parameter:
-    if scale_to == 'one_one':
+    if scale_to == "one_one":
         # Scale inputs to [-1,1]:
         data_scaled = 2 * (data - train_min) / (train_max - train_min) - 1
 
-    elif scale_to == 'zero_one':
+    elif scale_to == "zero_one":
         # Alternatively scale inputs to [0,1]
         data_scaled = (data - train_min) / (train_max - train_min)
 
-    elif scale_to == 'norm':
+    elif scale_to == "norm":
         # Alternatively scale inputs to [0,1]
         data_scaled = (data - train_mean) / train_std
 
@@ -358,7 +367,7 @@ def split_and_scale_data(data, missing_mask, train_val_split, scale_to):
     # Again set former NaN values to zero, after scaling / normalizing:
     data_scaled[invalid_gridpoints] = 0
     data_sparse_scaled[invalid_gridpoints] = 0
-        
+
     ## Split inputs and targets:
     train_input = data_sparse_scaled[:n_train]
     val_input = data_sparse_scaled[n_train:]
@@ -368,5 +377,14 @@ def split_and_scale_data(data, missing_mask, train_val_split, scale_to):
     # Add dimension for number of channels, required for Conv2D:
     train_input = np.expand_dims(train_input, axis=-1)
     val_input = np.expand_dims(val_input, axis=-1)
-    
-    return train_input, val_input, train_target, val_target, train_min, train_max, train_mean, train_std
+
+    return (
+        train_input,
+        val_input,
+        train_target,
+        val_target,
+        train_min,
+        train_max,
+        train_mean,
+        train_std,
+    )
