@@ -32,12 +32,13 @@ model_config = 'unet_4conv'
 feature = 'sea-surface-temperature' # Choose either 'sea-level-pressure' or 'sea-surface-temperature' as feature.
 feature_short = 'sst' # Free to set short name, to store results, e.g. 'slp' and 'sst'.
 source = 'FOCI' # Choose Earth System Model, either 'FOCI' or 'CESM'.
+seed = 3 # Seed for random number generator, for reproducibility of missing value mask.
 mask_type = 'variable' # Can have random missing values, individually for each data sample ('variable'), 
                     # or randomly create only a single mask, that is then applied to all samples identically ('fixed').
 missing_type = 'discrete' # Either specify discrete amounts of missing values ('discrete') or give a range ('range').
 augmentation_factor = 2 # Number of times, each sample is to be cloned, keeping the original order.
 train_val_split = 0.8 # Set rel. amount of samples used for training.
-missing_values = [0.99, 0.95, 0.9, 0.75, 0.5] # Set array for desired amounts of missing values: 0.9 means, that 90% of the values are missing.
+missing_values = [0.99, 0.95, 0.9, 0.75, 0.5, 0.25] # Set array for desired amounts of missing values: 0.9 means, that 90% of the values are missing.
                                               # Or set a range by only giving minimum and maximum allowed relative amounts of missing values, 
                                               # e.g. [0.75, 0.95], according to missing_type 'discrete' or 'range', respectively.
 scale_to = 'zero_one' # Choose to scale inputs to [-1,1] ('one_one') or [0,1] ('zero_one') or 'norm' to normalize inputs or 'no' scaling.
@@ -45,7 +46,7 @@ scale_to = 'zero_one' # Choose to scale inputs to [-1,1] ('one_one') or [0,1] ('
 # To build, compile and train model:
 CNN_filters = [64,128,256,512]# [2,4,8,16] # Number of filters.
 CNN_kernel_size = 5 # Kernel size
-learning_rate = 0.0005
+learning_rate = 0.0001
 loss_function = 'mse' 
 epochs = 10
 batch_size = 10
@@ -61,6 +62,7 @@ parameters = {
     'feature': feature,
     'feature_short': feature_short,
     'source': source,
+    'seed': seed,
     'mask_type': mask_type,
     'missing_type': missing_type,
     'augmentation_factor': augmentation_factor,
@@ -103,7 +105,7 @@ for i in range(len(missing_values)):
     data = clone_data(data=data, augmentation_factor=augmentation_factor)
     
     # Create mask for missing values:
-    missing_mask = create_missing_mask(data=data, mask_type=mask_type, missing_type=missing_type, missing_min=missing, missing_max=missing)
+    missing_mask = create_missing_mask(data=data, mask_type=mask_type, missing_type=missing_type, missing_min=missing, missing_max=missing, seed=seed)
     
     # Store missing mask:
     np.save(path / 'missing_' f'{int(missing*100)}' / 'missing_mask.npy', missing_mask)
