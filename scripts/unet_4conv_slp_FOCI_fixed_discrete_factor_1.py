@@ -15,6 +15,10 @@ from pathlib import Path
 
 import numpy as np
 
+sys.path.append(
+    "GitHub/MarcoLandtHayen/reconstruct_missing_data/reconstruct_missing_data"
+)
+
 from data_loading import (
     clone_data,
     create_missing_mask,
@@ -23,12 +27,6 @@ from data_loading import (
     split_and_scale_data,
 )
 from models import build_unet_4conv
-
-
-sys.path.append(
-    "GitHub/MarcoLandtHayen/reconstruct_missing_data/reconstruct_missing_data"
-)
-
 
 # ## Set parameters up-front:
 
@@ -43,6 +41,7 @@ model_config = "unet_4conv"
 feature = "sea-level-pressure"  # Choose either 'sea-level-pressure' or 'sea-surface-temperature' as feature.
 feature_short = "slp"  # Free to set short name, to store results, e.g. 'slp' and 'sst'.
 source = "FOCI"  # Choose Earth System Model, either 'FOCI' or 'CESM'.
+seed = 3  # Seed for random number generator, for reproducibility of missing value mask.
 mask_type = "fixed"  # Can have random missing values, individually for each data sample ('variable'),
 # or randomly create only a single mask, that is then applied to all samples identically ('fixed').
 missing_type = "discrete"  # Either specify discrete amounts of missing values ('discrete') or give a range ('range').
@@ -64,7 +63,7 @@ scale_to = "zero_one"  # Choose to scale inputs to [-1,1] ('one_one') or [0,1] (
 # To build, compile and train model:
 CNN_filters = [64, 128, 256, 512]  # [2,4,8,16] # Number of filters.
 CNN_kernel_size = 5  # Kernel size
-learning_rate = 0.0005
+learning_rate = 0.0001
 loss_function = "mse"
 epochs = 10
 batch_size = 10
@@ -84,6 +83,8 @@ path = Path(
     + missing_type
     + "_factor_"
     + str(augmentation_factor)
+    + "_seed_"
+    + str(seed)
 )
 os.makedirs(path, exist_ok=False)
 
@@ -93,6 +94,7 @@ parameters = {
     "feature": feature,
     "feature_short": feature_short,
     "source": source,
+    "seed": seed,
     "mask_type": mask_type,
     "missing_type": missing_type,
     "augmentation_factor": augmentation_factor,
@@ -141,6 +143,7 @@ for i in range(len(missing_values)):
         missing_type=missing_type,
         missing_min=missing,
         missing_max=missing,
+        seed=seed,
     )
 
     # Store missing mask:
