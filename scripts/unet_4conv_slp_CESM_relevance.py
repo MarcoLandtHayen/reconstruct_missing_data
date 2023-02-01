@@ -109,7 +109,7 @@ model = tf.keras.models.load_model(path_to_model / 'missing_50_999' / 'model')
 exp_name = '/relevance_exp_13'
 
 # Set sample number to start f rom:
-start_sample = 23
+start_sample = 19
 
 # Define number of validation samples to consider:
 n_samples = 1
