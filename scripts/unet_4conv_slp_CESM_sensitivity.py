@@ -18,6 +18,10 @@ import tensorflow as tf
 import tensorflow.keras.initializers as tfi
 import tensorflow.keras.regularizers as tfr
 
+sys.path.append(
+    "GitHub/MarcoLandtHayen/reconstruct_missing_data/reconstruct_missing_data"
+)
+
 from data_loading import (
     clone_data,
     create_missing_mask,
@@ -44,9 +48,7 @@ from tensorflow.keras.optimizers import SGD, Adam
 from tensorflow.keras.utils import plot_model
 
 
-sys.path.append(
-    "GitHub/MarcoLandtHayen/reconstruct_missing_data/reconstruct_missing_data"
-)
+
 
 
 # Suppress Tensorflow warnings
@@ -131,10 +133,16 @@ for i in range(len(missing_values)):
     # Get current rel. amount of missing values, as fixed amount:
     missing_fix = missing_values[i]
 
-    # Reload final pre-trained model for current fixed rel. amount of missing values:
-    model = tf.keras.models.load_model(
-        path / "missing_" f"{int(missing_fix*100)}" / "model"
-    )
+    # Reload final pre-trained model for current fixed rel. amount of missing values.
+    # Rel. amount of missing values = 0.999 requires special treatment:
+    if missing_fix==0.999:
+        model = tf.keras.models.load_model(
+            path / "missing_" f"{int(missing_fix*1000)}" / "model"
+        )
+    else:
+        model = tf.keras.models.load_model(
+            path / "missing_" f"{int(missing_fix*100)}" / "model"
+        )
 
     # Loop over rel. amounts of missing values:
     for j in range(len(missing_values)):
@@ -156,10 +164,16 @@ for i in range(len(missing_values)):
             # Extend data, if desired:
             data = clone_data(data=data, augmentation_factor=augmentation_factor)
 
-            # Reload mask for missing values:
-            missing_mask = np.load(
-                path / "missing_" f"{int(missing*100)}" / "missing_mask.npy"
-            )
+            # Reload mask for missing values.
+            # Rel. amount of missing values = 0.999 requires special treatment:
+            if missing==0.999:
+                missing_mask = np.load(
+                    path / "missing_" f"{int(missing*1000)}" / "missing_mask.npy"
+                )
+            else:
+                missing_mask = np.load(
+                    path / "missing_" f"{int(missing*100)}" / "missing_mask.npy"
+                )
 
             # Use sparse data as inputs and complete data as targets. Split sparse and complete data into training and validation sets.
             # Scale or normlalize data according to statistics obtained from only training data.
