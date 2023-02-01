@@ -48,12 +48,12 @@ mask_type = "variable"  # Can have random missing values, individually for each 
 # or randomly create only a single mask, that is then applied to all samples identically ('fixed').
 missing_type = "range"  # Either specify discrete amounts of missing values ('discrete') or give a range ('range').
 augmentation_factor = (
-    2  # Number of times, each sample is to be cloned, keeping the original order.
+    3  # Number of times, each sample is to be cloned, keeping the original order.
 )
 train_val_split = 0.8  # Set rel. amount of samples used for training.
 missing_values = [
-    0.75,
-    0.99,
+    0.5,
+    0.999,
 ]  # Set array for desired amounts of missing values: 0.9 means, that 90% of the values are missing.
 # Or set a range by only giving minimum and maximum allowed relative amounts of missing values,
 # e.g. [0.75, 0.95], according to missing_type 'discrete' or 'range', respectively.
@@ -108,7 +108,7 @@ else:
         + "_seed_"
         + str(seed)
     )
-
+    
 os.makedirs(path, exist_ok=False)
 
 # Store parameters as json:

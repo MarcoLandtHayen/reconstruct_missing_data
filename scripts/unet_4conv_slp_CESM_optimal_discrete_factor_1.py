@@ -2,9 +2,10 @@
 #
 # Following [Xiantao et al., 2020] approach: Test U-Net to reconstruct complete data from sparse inputs.
 # Opposed to their net, only have 4 instead of 5 convolutional layers.
-# Work with sea surface temperature (sst) fields from Earth System Models, either FOCI or CESM.
+# Work with sea level pressure (slp) fields from Earth System Models, either FOCI or CESM.
 #
-# Have random mask for missing values, individually for each data sample (mask_type='variable').
+# Apply optimal mask of missing values, which is identical to all samples (mask_type='fixed').
+# Got optimal mask from rel. loss reduction map, obtained on validation samples with range model.
 # And only use each sample once, no data augmentation in this experiment.
 
 import os
@@ -14,6 +15,10 @@ from json import dump, load
 from pathlib import Path
 
 import numpy as np
+
+sys.path.append(
+    "GitHub/MarcoLandtHayen/reconstruct_missing_data/reconstruct_missing_data"
+)
 
 from data_loading import (
     clone_data,
@@ -25,12 +30,11 @@ from data_loading import (
 from models import build_unet_4conv
 
 
-sys.path.append(
-    "GitHub/MarcoLandtHayen/reconstruct_missing_data/reconstruct_missing_data"
-)
-
 
 # ## Set parameters up-front:
+
+## Set path to optimal missing masks:
+path_to_missing_masks = Path('GitGeomar/marco-landt-hayen/reconstruct_missing_data/results/unet_4conv_slp_CESM_variable_range_50_999_factor_3_final')
 
 ## Decide to work on test data or full data:
 # path_to_data = 'GitHub/MarcoLandtHayen/reconstruct_missing_data/data/test_data/' # Test data
@@ -40,24 +44,23 @@ path_to_data = "climate_index_collection/data/raw/2022-08-22/"  # Full data
 model_config = "unet_4conv"
 
 # Data loading and preprocessing:
-feature = "sea-surface-temperature"  # Choose either 'sea-level-pressure' or 'sea-surface-temperature' as feature.
-feature_short = "sst"  # Free to set short name, to store results, e.g. 'slp' and 'sst'.
-source = "FOCI"  # Choose Earth System Model, either 'FOCI' or 'CESM'.
-seed = 1  # Seed for random number generator, for reproducibility of missing value mask.
-mask_type = "variable"  # Can have random missing values, individually for each data sample ('variable'),
-# or randomly create only a single mask, that is then applied to all samples identically ('fixed').
+feature = "sea-level-pressure"  # Choose either 'sea-level-pressure' or 'sea-surface-temperature' as feature.
+feature_short = "slp"  # Free to set short name, to store results, e.g. 'slp' and 'sst'.
+source = "CESM"  # Choose Earth System Model, either 'FOCI' or 'CESM'.
+run = "_run_1" # Specify run number (or '_final'). Don't need seed, since we use optimal fixed mask.
+mask_source = "unet_4conv_slp_CESM_variable_range_50_999_factor_3_final"  # Name of experiment, that produced optimal sampling mask.
+mask_type = "optimal"  # Can have random missing values, individually for each data sample ('variable'),
+# or randomly create only a single mask, that is then applied to all samples identically ('fixed'),
+# or use fixed mask with optimal grip points, leading to strongest reduction in rel. loss ('optimal').
 missing_type = "discrete"  # Either specify discrete amounts of missing values ('discrete') or give a range ('range').
 augmentation_factor = (
     1  # Number of times, each sample is to be cloned, keeping the original order.
 )
 train_val_split = 0.8  # Set rel. amount of samples used for training.
 missing_values = [
+    0.999,
     0.99,
     0.95,
-    0.9,
-    0.75,
-    0.5,
-    0.25,
 ]  # Set array for desired amounts of missing values: 0.9 means, that 90% of the values are missing.
 # Or set a range by only giving minimum and maximum allowed relative amounts of missing values,
 # e.g. [0.75, 0.95], according to missing_type 'discrete' or 'range', respectively.
@@ -86,8 +89,7 @@ path = Path(
     + missing_type
     + "_factor_"
     + str(augmentation_factor)
-    + "_seed_"
-    + str(seed)
+    + run
 )
 os.makedirs(path, exist_ok=False)
 
@@ -97,7 +99,8 @@ parameters = {
     "feature": feature,
     "feature_short": feature_short,
     "source": source,
-    "seed": seed,
+    "run": run,
+    "mask_source": mask_source,
     "mask_type": mask_type,
     "missing_type": missing_type,
     "augmentation_factor": augmentation_factor,
@@ -118,17 +121,20 @@ with open(path / "parameters.json", "w") as f:
 
 # # Train models:
 
+
 # Loop over array of desired amounts of missing values:
 for i in range(len(missing_values)):
 
     # Get current relative amount of missing values:
     missing = missing_values[i]
 
-    # Print status:
-    print("Missing values: ", i + 1, " of ", len(missing_values))
-
     # Create sub-directory to store results: Raise error, if path already exists, to avoid overwriting existing results.
-    os.makedirs(path / "missing_" f"{int(missing*100)}", exist_ok=False)
+    
+    # Rel. amount of missing values = 0.999 requires special treatment:
+    if missing==0.999:
+        os.makedirs(path / "missing_" f"{int(missing*1000)}", exist_ok=False)
+    else:
+        os.makedirs(path / "missing_" f"{int(missing*100)}", exist_ok=False)        
 
     # Load data, including ALL fields and mask for Ocean values:
     data = load_data_set(data_path=path_to_data, data_source_name=source)
@@ -139,18 +145,28 @@ for i in range(len(missing_values)):
     # Extend data, if desired:
     data = clone_data(data=data, augmentation_factor=augmentation_factor)
 
-    # Create mask for missing values:
-    missing_mask = create_missing_mask(
-        data=data,
-        mask_type=mask_type,
-        missing_type=missing_type,
-        missing_min=missing,
-        missing_max=missing,
-        seed=seed,
-    )
-
-    # Store missing mask:
-    np.save(path / "missing_" f"{int(missing*100)}" / "missing_mask.npy", missing_mask)
+    # Reload optimal mask for missing values.
+    # Rel. amount of missing values = 0.999 requires special treatment:
+    if missing==0.999:
+        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*1000))+".npy"
+        missing_mask = np.load(
+            path_to_missing_masks / filename_missing_mask
+        )
+    else:
+        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*100))+".npy"
+        missing_mask = np.load(
+            path_to_missing_masks / filename_missing_mask
+        )
+    
+    # Expand missing mask to have sample dimension as first dimension, then repeat. Dimensions: (#samples, lat, lon).
+    missing_mask = np.repeat(np.expand_dims(missing_mask,axis=0),data.shape[0], axis=0)
+    
+    # Store missing mask.
+    # Rel. amount of missing values = 0.999 requires special treatment:
+    if missing==0.999:
+        np.save(path / "missing_" f"{int(missing*1000)}" / "missing_mask.npy", missing_mask)
+    else:
+        np.save(path / "missing_" f"{int(missing*100)}" / "missing_mask.npy", missing_mask)
 
     # Use sparse data as inputs and complete data as targets. Split sparse and complete data into training and validation sets.
     # Scale or normlalize data according to statistics obtained from only training data.
@@ -174,8 +190,12 @@ for i in range(len(missing_values)):
         loss_function=loss_function,
     )
 
-    # Save untrained model:
-    model.save(path / "missing_" f"{int(missing*100)}" / f"epoch_{0}")
+    # Save untrained model.
+    # Rel. amount of missing values = 0.999 requires special treatment:
+    if missing==0.999:
+        model.save(path / "missing_" f"{int(missing*1000)}" / f"epoch_{0}")
+    else:
+        model.save(path / "missing_" f"{int(missing*100)}" / f"epoch_{0}")
 
     # Initialize storage for training and validation loss:
     train_loss = []
@@ -206,8 +226,12 @@ for i in range(len(missing_values)):
             validation_data=(val_input, val_target),
         )
 
-        # Save trained model after current epoch:
-        model.save(path / "missing_" f"{int(missing*100)}" / f"epoch_{j+1}")
+        # Save trained model after current epoch.
+        # Rel. amount of missing values = 0.999 requires special treatment:
+        if missing==0.999:
+            model.save(path / "missing_" f"{int(missing*1000)}" / f"epoch_{j+1}")
+        else:
+            model.save(path / "missing_" f"{int(missing*100)}" / f"epoch_{j+1}")
 
         # Get model predictions on train and validation data AFTER current epoch:
         train_pred = model.predict(train_input)
@@ -217,6 +241,15 @@ for i in range(len(missing_values)):
         train_loss.append(np.mean((train_pred[:, :, :, 0] - train_target) ** 2))
         val_loss.append(np.mean((val_pred[:, :, :, 0] - val_target) ** 2))
 
-    # Save loss:
-    np.save(path / "missing_" f"{int(missing*100)}" / "train_loss.npy", train_loss)
-    np.save(path / "missing_" f"{int(missing*100)}" / "val_loss.npy", val_loss)
+    # Save loss.
+    # Rel. amount of missing values = 0.999 requires special treatment:
+    if missing==0.999:
+        np.save(path / "missing_" f"{int(missing*1000)}" / "train_loss.npy", train_loss)
+        np.save(path / "missing_" f"{int(missing*1000)}" / "val_loss.npy", val_loss)
+    else:
+        np.save(path / "missing_" f"{int(missing*100)}" / "train_loss.npy", train_loss)
+        np.save(path / "missing_" f"{int(missing*100)}" / "val_loss.npy", val_loss)
+
+    
+
+    

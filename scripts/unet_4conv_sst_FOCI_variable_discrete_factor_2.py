@@ -86,6 +86,8 @@ path = Path(
     + missing_type
     + "_factor_"
     + str(augmentation_factor)
+    + "_seed_"
+    + str(seed)
 )
 os.makedirs(path, exist_ok=False)
 

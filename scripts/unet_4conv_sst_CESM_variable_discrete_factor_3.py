@@ -15,6 +15,10 @@ from pathlib import Path
 
 import numpy as np
 
+sys.path.append(
+    "GitHub/MarcoLandtHayen/reconstruct_missing_data/reconstruct_missing_data"
+)
+
 from data_loading import (
     clone_data,
     create_missing_mask,
@@ -24,10 +28,6 @@ from data_loading import (
 )
 from models import build_unet_4conv
 
-
-sys.path.append(
-    "GitHub/MarcoLandtHayen/reconstruct_missing_data/reconstruct_missing_data"
-)
 
 
 # ## Set parameters up-front:
@@ -42,13 +42,13 @@ model_config = "unet_4conv"
 # Data loading and preprocessing:
 feature = "sea-surface-temperature"  # Choose either 'sea-level-pressure' or 'sea-surface-temperature' as feature.
 feature_short = "sst"  # Free to set short name, to store results, e.g. 'slp' and 'sst'.
-source = "FOCI"  # Choose Earth System Model, either 'FOCI' or 'CESM'.
+source = "CESM"  # Choose Earth System Model, either 'FOCI' or 'CESM'.
 seed = 1  # Seed for random number generator, for reproducibility of missing value mask.
 mask_type = "variable"  # Can have random missing values, individually for each data sample ('variable'),
 # or randomly create only a single mask, that is then applied to all samples identically ('fixed').
 missing_type = "discrete"  # Either specify discrete amounts of missing values ('discrete') or give a range ('range').
 augmentation_factor = (
-    1  # Number of times, each sample is to be cloned, keeping the original order.
+    3  # Number of times, each sample is to be cloned, keeping the original order.
 )
 train_val_split = 0.8  # Set rel. amount of samples used for training.
 missing_values = [

@@ -27,7 +27,7 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
 # Define function to compute relevance map for single sample:
-def compute_single_relevance_map(input_sample, patch_size, model):
+def compute_single_relevance_map(input_sample, patch_size, model, max_patch_num, max_acc_rel_loss_reduction):
     """Compute relevance map for single sample, divided into squared patches, from given model.
 
     Parameters
@@ -38,22 +38,35 @@ def compute_single_relevance_map(input_sample, patch_size, model):
         Size of edges of squared patches, that the sample will divided to.
     model: tensorflow.model
         Pre-trained model to get predictions from.
+    max_patch_num: int
+        Stop adding patches after reaching this specified number of maximum patches to include.
+        If set to -1, include ALL patches.
+    max_acc_rel_loss_reduction: float
+        Or stop adding patches after accumulated rel. loss reduction exceeds this specified threshold.
         
     Returns
     -------
     numpy.ndarray
-        Heat map of relative loss reduction of each patch, when added. Total relative loss sums up to one. Dimensions equal original input sample's latitude and longitude.
+        Heat map of relative loss reduction of each patch, when added. Total relative loss sums up to one, if include all patches. 
+        Dimensions equal original input sample's latitude and longitude.
+    
+    numpy.ndarrays patch_order, abs_loss_reduction, rel_loss_reduction, acc_rel_loss_reduction
+        Patch numbers ordered by decreasing relevance, absolute and relative loss reduction, and accumulated rel. loss reduction
 
     """
     
-    ## Get parameters for patches, enumerated line-by-line, from left to right, from top to bottom, starting with ONE.
+    ## Get parameters for patches, enumerated line-by-line, from left to right, from top to bottom, starting with ZERO.
 
     # Get number of patches in lat and lon directions, respectively:
     n_lat = int(input_sample.shape[1] / patch_size)
     n_lon = int(input_sample.shape[2] / patch_size)
 
-    # Obtain number of patches:
+    # Obtain total number of patches:
     n_patches = int(n_lat * n_lon)
+    
+    # Check for maximum number of desired patches: If given as -1, set to total number of patches.
+    if max_patch_num == -1:
+        max_patch_num = n_patches
 
     # Create list of patch indices:
     patch_indices = list(np.arange(n_patches))
@@ -63,8 +76,8 @@ def compute_single_relevance_map(input_sample, patch_size, model):
 
     ## Create patches:
 
-    # Initialize storage for patches. Dimension (# of patches, latitude, longitude)
-    patches = np.zeros((len(patch_indices), input_sample.shape[1], input_sample.shape[2]))
+    # Initialize storage for patches as boolean array. Dimension (# of patches, latitude, longitude)
+    patches = (np.zeros((len(patch_indices), input_sample.shape[1], input_sample.shape[2])) != 0)
 
     # Run over list of patch indices:
     for n in range(len(patch_indices)):
@@ -77,7 +90,7 @@ def compute_single_relevance_map(input_sample, patch_size, model):
         x = patch_index % n_lon    
 
         # Store mask for current patch:
-        patches[n,int(y*patch_size):int((y+1)*patch_size),int(x*patch_size):int((x+1)*patch_size)] = 1 
+        patches[n,int(y*patch_size):int((y+1)*patch_size),int(x*patch_size):int((x+1)*patch_size)] = True 
     
     # Expand dimensions of patches: Have last dimension for channel (=1), to match requirements for CNN inputs.
     patches_extended = np.expand_dims(patches, axis=-1)
@@ -103,10 +116,12 @@ def compute_single_relevance_map(input_sample, patch_size, model):
     # Compute loss of patchy predictions compared to targets (= complete input sample):
     patchy_loss = np.mean((patchy_pred[:,:,:,0] - input_sample[0,:,:,0])**2,axis=(1,2))
     
-    # Initialize storage for patches ordered by decreasing relevance, absolute and relative loss reduction:
+    # Initialize storage for patches ordered by decreasing relevance, absolute and relative loss reduction, 
+    # and accumulated rel. loss reduction:
     patch_order = []
     abs_loss_reduction = []
     rel_loss_reduction = []
+    acc_rel_loss_reduction = []
 
     # get index for patch leading to lowest loss, when adding:
     min_index = np.argsort(patchy_loss)[0]
@@ -119,70 +134,81 @@ def compute_single_relevance_map(input_sample, patch_size, model):
 
     # Save loss reduction relative to the difference of mean state loss and min. loss, when adding this patch:
     rel_loss_reduction.append((mean_state_loss - patchy_loss[min_index]) / (mean_state_loss - min_loss))
+    
+    # Save accumulated rel. loss reduction, for first patch it equals the usual rel. loss reduction:
+    acc_rel_loss_reduction.append(rel_loss_reduction[0])
 
     # Fix the previously identified patch with lowest reconstruction loss, as new base patch:
     base_patch = patches[min_index]
     
-    for i in range(5):
+    ## Run over the remaining patches, check, if stopping criterions are fulfilled:
+    for i in range(n_patches-1):
+
+        # Check for maximum number of patches to include and threshold for accumulated rel. loss reduction:
+        if (len(patch_order) >= max_patch_num) | (acc_rel_loss_reduction[-1] >= max_acc_rel_loss_reduction):
+            break
+        else:        
+            ## Create new patches:
+
+            # Remove previously selected patch from list of patch indices:
+            patch_indices.remove(patch_indices[min_index])
+
+            # Initialize storage for patches by repeating base patch as often as we have remaining patches.
+            # Dimensions: (# of remaining patches, latitude, longitude)
+            patches = np.repeat(np.expand_dims(base_patch,axis=0),len(patch_indices), axis=0)
+
+            # Run over list of remaining patch indices:
+            for n in range(len(patch_indices)):
+
+                # Get current patch index:
+                patch_index = patch_indices[n]
+
+                # Get x and y coordinate from current patch index:
+                y = patch_index // n_lon
+                x = patch_index % n_lon    
+
+                # Store mask for current patch:
+                patches[n,int(y*patch_size):int((y+1)*patch_size),int(x*patch_size):int((x+1)*patch_size)] = True 
+
+            # Create base input from base patch:
+            base_input = (np.expand_dims(base_patch, axis=-1) * input_sample)
+
+            # Get model prediction on base input:
+            base_pred = model.predict(base_input)
+
+            # Expand dimensions of patches: Have last dimension for channel (=1), to match requirements for CNN inputs.
+            patches_extended = np.expand_dims(patches, axis=-1)
+
+            # Create input samples from first validation sample:
+            patchy_input = patches_extended * input_sample
+
+            # Get model predictions on patchy inputs:
+            patchy_pred = model.predict(patchy_input)
+
+            # Compute loss from prediction on base sample compared to target (= complete input sample):
+            base_loss = np.mean((base_pred[:,:,:,0] - input_sample[0,:,:,0])**2)
+
+            # Compute loss (mean squared error) of patchy predictions compared to targets (= complete input sample):
+            patchy_loss = np.mean((patchy_pred[:,:,:,0] - input_sample[0,:,:,0])**2,axis=(1,2))
+
+            # get index for patch leading to lowest loss, when adding:
+            min_index = np.argsort(patchy_loss)[0]
+
+            # Save index of first patch, leading to lowest loss:
+            patch_order.append(patch_indices[min_index])
+
+            # Save absolute loss reduction, when adding this patch:
+            abs_loss_reduction.append(base_loss - patchy_loss[min_index])
+
+            # Save loss reduction relative to the difference of mean state loss and min. loss, when adding this patch:
+            rel_loss_reduction.append((base_loss - patchy_loss[min_index]) / (mean_state_loss - min_loss))
+            
+            # Save accumulated rel. loss reduction:
+            acc_rel_loss_reduction.append(acc_rel_loss_reduction[-1]+rel_loss_reduction[-1])
+
+            # Fix the previously identified patch with lowest reconstruction loss, as new base patch:
+            base_patch = patches[min_index]
     
-        ## Create new patches:
-
-        # Remove previously selected patch from list of patch indices:
-        patch_indices.remove(patch_indices[min_index])
-
-        # Initialize storage for patches by repeating base patch as often as we have remaining patches.
-        # Dimensions: (# of remaining patches, latitude, longitude)
-        patches = np.repeat(np.expand_dims(base_patch,axis=0),len(patch_indices), axis=0)
-
-        # Run over list of remaining patch indices:
-        for n in range(len(patch_indices)):
-
-            # Get current patch index:
-            patch_index = patch_indices[n]
-
-            # Get x and y coordinate from current patch index:
-            y = patch_index // n_lon
-            x = patch_index % n_lon    
-
-            # Store mask for current patch:
-            patches[n,int(y*patch_size):int((y+1)*patch_size),int(x*patch_size):int((x+1)*patch_size)] = 1 
-
-        # Create base input from base patch:
-        base_input = (np.expand_dims(base_patch, axis=-1) * input_sample)
-
-        # Get model prediction on base input:
-        base_pred = model.predict(base_input)
-
-        # Expand dimensions of patches: Have last dimension for channel (=1), to match requirements for CNN inputs.
-        patches_extended = np.expand_dims(patches, axis=-1)
-
-        # Create input samples from first validation sample:
-        patchy_input = patches_extended * input_sample
-
-        # Get model predictions on patchy inputs:
-        patchy_pred = model.predict(patchy_input)
-
-        # Compute loss from prediction on base sample compared to target (= complete input sample):
-        base_loss = np.mean((base_pred[:,:,:,0] - input_sample[0,:,:,0])**2)
-
-        # Compute loss (mean squared error) of patchy predictions compared to targets (= complete input sample):
-        patchy_loss = np.mean((patchy_pred[:,:,:,0] - input_sample[0,:,:,0])**2,axis=(1,2))
-
-        # get index for patch leading to lowest loss, when adding:
-        min_index = np.argsort(patchy_loss)[0]
-
-        # Save index of first patch, leading to lowest loss:
-        patch_order.append(patch_indices[min_index])
-
-        # Save absolute loss reduction, when adding this patch:
-        abs_loss_reduction.append(base_loss - patchy_loss[min_index])
-
-        # Save loss reduction relative to the difference of mean state loss and min. loss, when adding this patch:
-        rel_loss_reduction.append((base_loss - patchy_loss[min_index]) / (mean_state_loss - min_loss))
-
-        # Fix the previously identified patch with lowest reconstruction loss, as new base patch:
-        base_patch = patches[min_index]
-
     ## Post-processing of patch order, in combination with rel. loss reduction.
     ## Aim to have a heat map with original size from input samples in latitude and longitude.
     ## Grid points for each patch get rel. loss reduction of individual patch as constant value.
@@ -202,5 +228,19 @@ def compute_single_relevance_map(input_sample, patch_size, model):
 
         # Store rel. loss reduction for current patch:
         rel_loss_reduction_map[int(y*patch_size):int((y+1)*patch_size),int(x*patch_size):int((x+1)*patch_size)] = rel_loss_reduction[n] 
+
+    ## Convert lists to np.arrays of unified maximum length (n_patches), for convenient post-processing:
     
-    return rel_loss_reduction_map
+    # Initialize storages, want to recognize unfilled entries as NaN, to avoid misunderstanding:
+    patch_order_array = np.zeros(n_patches)+float('nan')
+    abs_loss_reduction_array = np.zeros(n_patches)+float('nan')
+    rel_loss_reduction_array = np.zeros(n_patches)+float('nan')
+    acc_rel_loss_reduction_array = np.zeros(n_patches)+float('nan')
+    
+    # Fill lists' content into arrays:
+    patch_order_array[:len(patch_order)]=patch_order
+    abs_loss_reduction_array[:len(patch_order)]=abs_loss_reduction
+    rel_loss_reduction_array[:len(patch_order)]=rel_loss_reduction
+    acc_rel_loss_reduction_array[:len(patch_order)]=acc_rel_loss_reduction
+            
+    return rel_loss_reduction_map, patch_order_array, abs_loss_reduction_array, rel_loss_reduction_array, acc_rel_loss_reduction_array
