@@ -388,3 +388,96 @@ def split_and_scale_data(data, missing_mask, train_val_split, scale_to):
         train_mean,
         train_std,
     )
+
+
+def eof_weights(dobj):
+    """Empirical orthogonal functions (EOFs) can be thought of as the eigen-vectors of the spatial covariance matrix.
+    Grid cells can be thought of as representing spatial averages which are low-pass filtering the raw signals and dampen the variance by a factor proportional to the square root of the cell size.
+    For equidistant latitude/longitude grids the area weights are proportional to cos(latitude).
+    Before applying Singular Value Decomposition (SVD), input data needs to be multiplied with the square root of the weights.
+
+
+    Parameters
+    ----------
+    dobj: xarray.DataArray
+        Contains the original input data.
+
+    Returns
+    -------
+    xarray.DataArray
+        Square root of weights needed to pre-process input data for SVD.
+    """
+    return np.sqrt(np.cos(np.deg2rad(dobj.coords["lat"])))
+
+
+def get_land_silhouette(data_path="data/test_data/", data_source_name="FOCI"):
+    """Create silhouett surrounding land masses, to highlight continents.
+
+    Parameters
+    ----------
+    data_path: str | path
+        Location of the data files. Defaults to "data/test_data/".
+    data_source_name: str
+        Name of the model dataset. Defaults to "FOCI".
+
+    Returns
+    -------
+    numpy.ndarray
+        Two-dimensional boolean mask, matching lat/lon dimensions of raw data.
+
+    """
+    
+    # Load data, including mask for ocean values:
+    data = load_data_set(data_path=data_path, data_source_name=data_source_name)
+    is_over_ocean = data['is_over_ocean'].values
+    
+    ## Derive mask for showing only the continents' silhouette as NaN values, for better orientation in slp fields.
+
+    # Initialize storage for silhouette as boolean mask:
+    land_silhouette = (np.zeros(is_over_ocean.shape)!=0)
+
+    # Loop over latitude in ocean mask, to scan mask line-by-line:
+    for i in range(is_over_ocean.shape[0]):
+
+        # Loop over longitude, to scan current line:
+        for j in range(is_over_ocean.shape[1]):
+
+            # Check, if current grid point is over land, while previous grid point was over ocean.
+            # Take care of initial border:
+            if j>0:
+                if (is_over_ocean[i,j]==False) & (is_over_ocean[i,j-1]==True):
+
+                    # Set land silhouette:
+                    land_silhouette[i,j] = True
+
+            # Check, if current grid point is over ocean, while previous grid point was over land.
+            # Take care of initial border:
+            if j>0:
+                if (is_over_ocean[i,j]==True) & (is_over_ocean[i,j-1]==False):
+
+                    # Set land silhouette:
+                    land_silhouette[i,j] = True
+
+    # Loop over longitude in ocean mask, to scan mask row-by-row:
+    for j in range(is_over_ocean.shape[1]):
+
+        # Loop over latitude, to scan current row:
+        for i in range(is_over_ocean.shape[0]):
+
+            # Check, if current grid point is over land, while previous grid point was over ocean.
+            # Take care of initial border:
+            if i>0:
+                if (is_over_ocean[i,j]==False) & (is_over_ocean[i-1,j]==True):
+
+                    # Set land silhouette:
+                    land_silhouette[i,j] = True
+
+            # Check, if current grid point is over ocean, while previous grid point was over land.
+            # Take care of initial border:
+            if i>0:
+                if (is_over_ocean[i,j]==True) & (is_over_ocean[i-1,j]==False):
+
+                    # Set land silhouette:
+                    land_silhouette[i,j] = True
+    
+    return land_silhouette 
