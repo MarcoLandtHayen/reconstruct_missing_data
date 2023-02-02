@@ -88,10 +88,10 @@ model = tf.keras.models.load_model(path_to_model / 'missing_50_999' / 'model')
 # exp_name = '/relevance_exp_12'
 
 # # Set sample number to start f rom:
-# start_sample = 117
+# start_sample = 345
 
 # # Define number of validation samples to consider:
-# n_samples = 3
+# n_samples = 15
 
 # # Define patch size:
 # patch_size = 1
@@ -106,21 +106,21 @@ model = tf.keras.models.load_model(path_to_model / 'missing_50_999' / 'model')
 
 ################# exp_13
 # Specify name of experiment, to store results accordingly in a separate folder:
-exp_name = '/relevance_exp_13'
+exp_name = '/relevance_exp_15'
 
 # Set sample number to start f rom:
-start_sample = 19
+start_sample = 0
 
 # Define number of validation samples to consider:
 n_samples = 1
 
 # Define patch size:
-patch_size = 1
+patch_size = 3
 
 ## Optionally define stopping criteria:
 
 # Specify maximum number of patches to include (or set -1, to include ALL patches):
-max_patch_num = 138
+max_patch_num = -1
 
 # Specify threshold for maximum accumulated rel. loss reduction (or set 1.0, for NO threshold):
 max_acc_rel_loss_reduction = 1.0    
@@ -132,7 +132,7 @@ path_to_store_results = Path('GitGeomar/marco-landt-hayen/reconstruct_missing_da
                       +mask_type+'_'+missing_type+'_factor_'+str(augmentation_factor)+run+exp_name)
 
 # Try to create folder for later saving results, avoid overwriting existing results:
-#os.makedirs(path_to_store_results, exist_ok=False)
+os.makedirs(path_to_store_results, exist_ok=False)
 
 # Store parameters as json:
 parameters = {
