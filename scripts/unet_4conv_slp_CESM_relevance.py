@@ -5,7 +5,7 @@
 # Work with sea level pressure (slp) fields from Earth System Models, either FOCI or CESM.
 #
 # Trained model with variable mask and augmentation factor 2 on samples with rel. amount of missing values in the range of [0.75, 0.99].
-# Divide validation samples into patches and successively add more patches as input.
+# Divide training samples into patches and successively add more patches as input.
 # Use this single model to find relevance - in terms of biggest loss reduction - in a brute-force manner.
 
 import os
@@ -82,13 +82,12 @@ scale_to = parameters['scale_to']
 # Reload final model, trained on range:
 model = tf.keras.models.load_model(path_to_model / 'missing_50_999' / 'model')
 
-
-# ################ exp_12
+# ################ relevance_1
 # # Specify name of experiment, to store results accordingly in a separate folder:
-# exp_name = '/relevance_exp_12'
+# exp_name = '/relevance_1'
 
-# # Set sample number to start f rom:
-# start_sample = 345
+# # Set sample number to start from:
+# start_sample = 9575
 
 # # Define number of validation samples to consider:
 # n_samples = 15
@@ -104,35 +103,57 @@ model = tf.keras.models.load_model(path_to_model / 'missing_50_999' / 'model')
 # # Specify threshold for maximum accumulated rel. loss reduction (or set 1.0, for NO threshold):
 # max_acc_rel_loss_reduction = 1.0    
 
-################# exp_13
-# Specify name of experiment, to store results accordingly in a separate folder:
-exp_name = '/relevance_exp_15'
 
-# Set sample number to start f rom:
-start_sample = 0
+################ relevance_2
+# Specify name of experiment, to store results accordingly in a separate folder:
+exp_name = '/relevance_2'
+
+# Set sample number to start from:
+start_sample = 60
+
+# Define number of validation samples to consider:
+n_samples = 2
+
+# Define patch size:
+patch_size = 1
+
+## Optionally define stopping criteria:
+
+# Specify maximum number of patches to include (or set -1, to include ALL patches):
+max_patch_num = 138
+
+# Specify threshold for maximum accumulated rel. loss reduction (or set 1.0, for NO threshold):
+max_acc_rel_loss_reduction = 1.0    
+
+################ relevance_3
+# Specify name of experiment, to store results accordingly in a separate folder:
+exp_name = '/relevance_3'
+
+# Set sample number to start from:
+start_sample = 9589
 
 # Define number of validation samples to consider:
 n_samples = 1
 
 # Define patch size:
-patch_size = 3
+patch_size = 1
 
 ## Optionally define stopping criteria:
 
 # Specify maximum number of patches to include (or set -1, to include ALL patches):
-max_patch_num = -1
+max_patch_num = 691
 
 # Specify threshold for maximum accumulated rel. loss reduction (or set 1.0, for NO threshold):
 max_acc_rel_loss_reduction = 1.0    
 
-
 #################
+
 # Get path to store results to:
 path_to_store_results = Path('GitGeomar/marco-landt-hayen/reconstruct_missing_data/results/'+model_config+'_'+feature_short+'_'+source+'_'
                       +mask_type+'_'+missing_type+'_factor_'+str(augmentation_factor)+run+exp_name)
 
 # Try to create folder for later saving results, avoid overwriting existing results:
-os.makedirs(path_to_store_results, exist_ok=False)
+#os.makedirs(path_to_store_results, exist_ok=False)
 
 # Store parameters as json:
 parameters = {
@@ -173,9 +194,9 @@ data = get_anomalies(feature=feature, data_set=data)
 # Create synthetic missing_mask of ONEs and convert to boolean mask of TRUE, to load FULL validation samples:
 missing_mask_1 = (np.ones(data.shape)==1)
 
-# Get scaled validation inputs and targets. Note: Using missing_mask of ONEs, validation inputs and targets are 
+# Get scaled training inputs. Note: Using missing_mask of ONEs, training inputs and targets are 
 # identical. Only difference is found in dimensionality: inputs have channel number (=1) as final dimension, targets don't.
-_, val_input, _, _, train_min, train_max, _, _ = split_and_scale_data(
+train_input, _, _, _, train_min, train_max, _, _ = split_and_scale_data(
     data, 
     missing_mask_1,
     train_val_split, 
@@ -187,8 +208,8 @@ _, val_input, _, _, train_min, train_max, _, _ = split_and_scale_data(
 ## Need number of possible patches in advance, to initialize storages:
 
 # Get number of patches in lat and lon directions, respectively:
-n_lat = int(val_input[0:1].shape[1] / patch_size)
-n_lon = int(val_input[0:1].shape[2] / patch_size)
+n_lat = int(train_input[0:1].shape[1] / patch_size)
+n_lon = int(train_input[0:1].shape[2] / patch_size)
 
 # Obtain total number of patches:
 n_patches = int(n_lat * n_lon)
@@ -206,7 +227,7 @@ for n in np.arange(start_sample,start_sample+n_samples):
         abs_loss_reduction, 
         rel_loss_reduction, 
         acc_rel_loss_reduction
-    ) = compute_single_relevance_map(input_sample=val_input[n:n+1],
+    ) = compute_single_relevance_map(input_sample=train_input[n:n+1],
                                      patch_size=patch_size, 
                                      model=model,
                                      max_patch_num=max_patch_num,
@@ -224,49 +245,3 @@ for n in np.arange(start_sample,start_sample+n_samples):
     np.save(path_to_store_results / file_name_abs_loss_reduction, abs_loss_reduction)
     np.save(path_to_store_results / file_name_rel_loss_reduction, rel_loss_reduction)
     np.save(path_to_store_results / file_name_acc_rel_loss_reduction, acc_rel_loss_reduction)
-
-
-
-
-
-### Alternatively single output for ALL samples:
-###
-# # Initialize storage for resulting relevance maps, dimension: (#samples, latitude, longitude).
-# # Initialize storage for patch orders, rel. and abs. loss reduction, and acc. rel. loss reduction, dimension: (#samples, #patches).
-# rel_loss_reduction_maps = np.zeros((n_samples, data.shape[1], data.shape[2]))
-# patch_orders = np.zeros((n_samples, n_patches))
-# abs_loss_reductions = np.zeros((n_samples, n_patches))
-# rel_loss_reductions = np.zeros((n_samples, n_patches))
-# acc_rel_loss_reductions = np.zeros((n_samples, n_patches))
-
-# # Loop over samples:
-# for n in range(n_samples):
-        
-#     # Compute relevance map, patch order and (acc.) rel. and abs. loss reduction for current sample with given patch size:
-#     (
-#         rel_loss_reduction_map, 
-#         patch_order, 
-#         abs_loss_reduction, 
-#         rel_loss_reduction, 
-#         acc_rel_loss_reduction
-#     ) = compute_single_relevance_map(input_sample=val_input[n:n+1],
-#                                      patch_size=patch_size, 
-#                                      model=model,
-#                                      max_patch_num=max_patch_num,
-#                                      max_acc_rel_loss_reduction=max_acc_rel_loss_reduction,
-#                                     )
-
-
-#     # Store relevance map, patch order and (acc.) rel. and abs. loss reduction for current sample with given patch size:
-#     rel_loss_reduction_maps[n] = rel_loss_reduction_map
-#     patch_orders[n] = patch_order
-#     abs_loss_reductions[n] = abs_loss_reduction
-#     rel_loss_reductions[n] = rel_loss_reduction
-#     acc_rel_loss_reductions[n] = acc_rel_loss_reduction
-    
-#     # Save output for this experiment, after each sample, to avoid data loss in case of 'out-of-memory event':
-#     np.save(path_to_store_results / "rel_loss_reduction_maps.npy", rel_loss_reduction_maps)
-#     np.save(path_to_store_results / "patch_orders.npy", patch_orders)
-#     np.save(path_to_store_results / "abs_loss_reductions.npy", abs_loss_reductions)
-#     np.save(path_to_store_results / "rel_loss_reductions.npy", rel_loss_reductions)
-#     np.save(path_to_store_results / "acc_rel_loss_reductions.npy", acc_rel_loss_reductions)

@@ -35,8 +35,9 @@ from models import build_unet_4conv
 
 ## Set paths to optimal missing masks as strings:
 paths_to_missing_masks_string = [
-    'GitGeomar/marco-landt-hayen/reconstruct_missing_data/results/unet_4conv_slp_CESM_variable_range_50_999_factor_3_final/relevance_exp_12',
-    'GitGeomar/marco-landt-hayen/reconstruct_missing_data/results/unet_4conv_slp_CESM_variable_range_50_999_factor_3_final/relevance_exp_13',
+    'GitGeomar/marco-landt-hayen/reconstruct_missing_data/results/unet_4conv_slp_CESM_variable_range_50_999_factor_3_final/relevance_1',
+#    'GitGeomar/marco-landt-hayen/reconstruct_missing_data/results/unet_4conv_slp_CESM_variable_range_50_999_factor_3_final/relevance_2',
+#    'GitGeomar/marco-landt-hayen/reconstruct_missing_data/results/unet_4conv_slp_CESM_variable_range_50_999_factor_3_final/relevance_3',
 ]
 
 ## Create paths to optimal missing masks as PosixPaths:
@@ -55,7 +56,8 @@ model_config = "unet_4conv"
 feature = "sea-level-pressure"  # Choose either 'sea-level-pressure' or 'sea-surface-temperature' as feature.
 feature_short = "slp"  # Free to set short name, to store results, e.g. 'slp' and 'sst'.
 source = "CESM"  # Choose Earth System Model, either 'FOCI' or 'CESM'.
-run = "_run_3" # Specify run number (or '_final'). Don't need seed, since we use optimal fixed mask.
+seed = 1  # Seed for random number generator, for reproducibility of missing value mask.
+run = "_run_29" # Specify run number (or '_final'). Don't need seed, since we use optimal fixed mask.
 mask_source = paths_to_missing_masks_string  # Paths to experiments, that produced optimal sampling masks, as strings.
 mask_type = "optimal"  # Can have random missing values, individually for each data sample ('variable'),
 # or randomly create only a single mask, that is then applied to all samples identically ('fixed'),
@@ -67,7 +69,8 @@ augmentation_factor = (
 train_val_split = 0.8  # Set rel. amount of samples used for training.
 missing_values = [
     0.999,
-    0.99,
+#    0.99,
+#    0.95,
 ]  # Set array for desired amounts of missing values: 0.9 means, that 90% of the values are missing.
 # Or set a range by only giving minimum and maximum allowed relative amounts of missing values,
 # e.g. [0.75, 0.95], according to missing_type 'discrete' or 'range', respectively.
@@ -155,12 +158,12 @@ for i in range(len(missing_values)):
     # Reload optimal mask for missing values.
     # Rel. amount of missing values = 0.999 requires special treatment:
     if missing==0.999:
-        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*1000))+".npy"
+        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*1000))+"_kmeans_3D_600_samples.npy"
         missing_mask = np.load(
             paths_to_missing_masks[i] / filename_missing_mask
         )
     else:
-        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*100))+".npy"
+        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*100))+"_kmeans_3D_600_samples.npy"
         missing_mask = np.load(
             paths_to_missing_masks[i] / filename_missing_mask
         )
