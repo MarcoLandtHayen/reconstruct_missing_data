@@ -57,7 +57,7 @@ feature = "sea-level-pressure"  # Choose either 'sea-level-pressure' or 'sea-sur
 feature_short = "slp"  # Free to set short name, to store results, e.g. 'slp' and 'sst'.
 source = "CESM"  # Choose Earth System Model, either 'FOCI' or 'CESM'.
 seed = 1  # Seed for random number generator, for reproducibility of missing value mask.
-run = "_run_29" # Specify run number (or '_final'). Don't need seed, since we use optimal fixed mask.
+run = "_run_30" # Specify run number (or '_final'). Don't need seed, since we use optimal fixed mask.
 mask_source = paths_to_missing_masks_string  # Paths to experiments, that produced optimal sampling masks, as strings.
 mask_type = "optimal"  # Can have random missing values, individually for each data sample ('variable'),
 # or randomly create only a single mask, that is then applied to all samples identically ('fixed'),
@@ -81,7 +81,7 @@ CNN_filters = [64, 128, 256, 512]  # [2,4,8,16] # Number of filters.
 CNN_kernel_size = 5  # Kernel size
 learning_rate = 0.0001
 loss_function = "mse"
-epochs = 10
+epochs = 20
 batch_size = 10
 
 
@@ -158,12 +158,12 @@ for i in range(len(missing_values)):
     # Reload optimal mask for missing values.
     # Rel. amount of missing values = 0.999 requires special treatment:
     if missing==0.999:
-        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*1000))+"_kmeans_3D_600_samples.npy"
+        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*1000))+"_kmeans_3D.npy"
         missing_mask = np.load(
             paths_to_missing_masks[i] / filename_missing_mask
         )
     else:
-        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*100))+"_kmeans_3D_600_samples.npy"
+        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*100))+"_kmeans_3D.npy"
         missing_mask = np.load(
             paths_to_missing_masks[i] / filename_missing_mask
         )
