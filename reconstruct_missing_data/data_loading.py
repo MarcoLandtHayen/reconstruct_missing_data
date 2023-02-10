@@ -7,10 +7,9 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+sys.path.append("./reconstruct_missing_data")
 from timestamp_handling import fix_monthly_time_stamps
 
-
-sys.path.append("./reconstruct_missing_data")
 
 ## Working on nesh with Container image reconstruct_missing_data_latest.sif:
 # from .timestamp_handling import fix_monthly_time_stamps
@@ -408,6 +407,183 @@ def eof_weights(dobj):
         Square root of weights needed to pre-process input data for SVD.
     """
     return np.sqrt(np.cos(np.deg2rad(dobj.coords["lat"])))
+
+
+def mean_unweighted(dobj, dim=None):
+    """Calculate an unweighted mean for one or more dimensions.
+
+    Parameters
+    ----------
+    dobj: xarray.Dataset or xarray.DataArray
+        Contains the original data.
+    dim: str or list
+        Dimension name or list of dimension names.
+
+    Returns
+    -------
+    xarray.Dataset or xarray.DataArray
+        Averaged data. Has the same variable name(s) as dobj.
+
+    """
+    return dobj.mean(dim)
+
+
+def area_mean_weighted(
+    dobj,
+    lat_south=None,
+    lat_north=None,
+    lon_west=None,
+    lon_east=None,
+    lon_name="lon",
+    lat_name="lat",
+    lat_extent_name=None,
+    lon_extent_name=None,
+):
+    """Area average over lat and lon range.
+
+    Parameters
+    ----------
+    dobj: xarray.DataArray
+        Data for which the area average will be computed.
+    lat_south: float
+        Southern latitude bound. If "None", only the other lat bound will be applied.
+    lat_north: float
+        Northern latitude bound. If "None", only the other lat bound will be applied.
+    lon_west: float
+        Western longitude bound. If "None", only the other lon bound will be applied.
+    lon_east: float
+        Eastern longitude bound. If "None", only the other lon bound will be applied.
+    lat_name: str
+        Name of the latitude coordinate. Defaults to "lat".
+    lon_name: str
+        Name of the longitude coordinate. Defaults to "lon".
+    lat_extent_name: str
+        Name of the lat extent. Defaults to None.
+    lon_extent_name: str
+        Name of the lon extent. Defaults to None.
+
+    Returns
+    -------
+    dobj:
+        Area averaged input data.
+
+    """
+    # extract coords
+    lat = dobj.coords[lat_name]
+    lon = dobj.coords[lon_name]
+
+    # coords
+    mask = spatial_mask(
+        dobj=dobj,
+        lat_south=lat_south,
+        lat_north=lat_north,
+        lon_west=lon_west,
+        lon_east=lon_east,
+        lon_name=lon_name,
+        lat_name=lat_name,
+    )
+
+    # do we have dimensional coords?
+    have_dimensional_coords = (lat.dims[0] == lat_name) & (lon.dims[0] == lon_name)
+
+    # prepare spatial coords for final sum
+    if have_dimensional_coords:
+        spatial_dims = [lat_name, lon_name]
+    else:
+        spatial_dims = list(set(lat.dims) + set(lon.dims))
+
+    # prepare weights
+    if have_dimensional_coords:
+        # will only handle equidistant lons and lats here...
+        dlon = abs(lon.diff(lon_name).mean())
+        dlat = abs(lat.diff(lat_name).mean())
+        dx = dlon * np.cos(np.deg2rad(lat))
+        dy = dlat
+        weights = dx * dy
+    else:
+        lat_extent = dobj.coords[lat_extent_name]
+        lon_extent = dobj.coords[lon_extent_name]
+        weights = lat_extent * lon_extent
+
+    # weighted averaging
+    averaged = (dobj * weights).where(mask).sum(spatial_dims) / weights.where(mask).sum(
+        spatial_dims
+    )
+
+    return averaged
+
+
+def spatial_mask(
+    dobj,
+    lat_south=None,
+    lat_north=None,
+    lon_west=None,
+    lon_east=None,
+    lon_name="lon",
+    lat_name="lat",
+):
+    """Mask over lat and lon range.
+
+    Parameters
+    ----------
+    dobj: xarray.DataArray
+        Data for which the mask will be created.
+    lat_south: float
+        Southern latitude bound. If "None", only the other lat bound will be applied.
+    lat_north: float
+        Northern latitude bound. If "None", only the other lat bound will be applied.
+    lon_west: float
+        Western longitude bound. If "None", only the other lon bound will be applied.
+    lon_east: float
+        Eastern longitude bound. If "None", only the other lon bound will be applied.
+    lat_name: str
+        Name of the latitude coordinate. Defaults to "lat".
+    lon_name: str
+        Name of the longitude coordinate. Defaults to "lon".
+
+    Returns
+    -------
+    dobj:
+        Mask for given lat and lon range.
+
+    """
+    # extract coords
+    lat = dobj.coords[lat_name]
+    lon = dobj.coords[lon_name]
+
+    # maybe standardize lon
+    lon = lon % 360
+    if lon_west is not None:
+        lon_west = lon_west % 360
+    if lon_east is not None:
+        lon_east = lon_east % 360
+
+    # catch unset lat and lon bounds
+    if lon_west is None:
+        lon_west = -np.inf
+    if lon_east is None:
+        lon_east = np.inf
+    if lat_south is None:
+        lat_south = -np.inf
+    if lat_north is None:
+        lat_north = np.inf
+
+    # coords
+    # check if lon range does not cross the greenwhich meridian at 0°W.
+    if lon_west <= lon_east:
+        return (
+            (lat >= lat_south)
+            & (lat <= lat_north)
+            & (lon >= lon_west)
+            & (lon <= lon_east)
+        )
+    # otherwise us 'or' instead of 'and' for the lon logical operation.
+    else:
+        return (
+            (lat >= lat_south)
+            & (lat <= lat_north)
+            & ((lon >= lon_west) | (lon <= lon_east))
+        )
 
 
 def get_land_silhouette(data_path="data/test_data/", data_source_name="FOCI"):

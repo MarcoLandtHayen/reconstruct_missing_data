@@ -68,7 +68,7 @@ augmentation_factor = 3
 run = '_final'
 
 # Get path to model:
-path_to_model = Path('GitGeomar/marco-landt-hayen/reconstruct_missing_data/results/'+model_config+'_'+feature_short+'_'+source+'_'
+path_to_model = Path('GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/'+model_config+'_'+feature_short+'_'+source+'_'
                       +mask_type+'_'+missing_type+'_factor_'+str(augmentation_factor)+run)
 
 # Reload parameters for this experiment:
@@ -82,12 +82,12 @@ scale_to = parameters['scale_to']
 # Reload final model, trained on range:
 model = tf.keras.models.load_model(path_to_model / 'missing_50_999' / 'model')
 
-################ relevance_1
+############### relevance_1
 # Specify name of experiment, to store results accordingly in a separate folder:
 exp_name = '/relevance_1'
 
 # Set sample number to start from:
-start_sample = 40
+start_sample = 9190
 
 # Define number of validation samples to consider:
 n_samples = 5
@@ -109,10 +109,10 @@ max_acc_rel_loss_reduction = 1.0
 # exp_name = '/relevance_2'
 
 # # Set sample number to start from:
-# start_sample = 60
+# start_sample = 0
 
 # # Define number of validation samples to consider:
-# n_samples = 2
+# n_samples = 1
 
 # # Define patch size:
 # patch_size = 1
@@ -130,7 +130,7 @@ max_acc_rel_loss_reduction = 1.0
 # exp_name = '/relevance_3'
 
 # # Set sample number to start from:
-# start_sample = 9589
+# start_sample = 0
 
 # # Define number of validation samples to consider:
 # n_samples = 1
@@ -149,7 +149,7 @@ max_acc_rel_loss_reduction = 1.0
 # ################
 
 # Get path to store results to:
-path_to_store_results = Path('GitGeomar/marco-landt-hayen/reconstruct_missing_data/results/'+model_config+'_'+feature_short+'_'+source+'_'
+path_to_store_results = Path('GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/'+model_config+'_'+feature_short+'_'+source+'_'
                       +mask_type+'_'+missing_type+'_factor_'+str(augmentation_factor)+run+exp_name)
 
 # Try to create folder for later saving results, avoid overwriting existing results:
