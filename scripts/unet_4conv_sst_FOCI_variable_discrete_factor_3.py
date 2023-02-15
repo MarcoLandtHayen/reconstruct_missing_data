@@ -2,7 +2,7 @@
 #
 # Following [Xiantao et al., 2020] approach: Test U-Net to reconstruct complete data from sparse inputs.
 # Opposed to their net, only have 4 instead of 5 convolutional layers.
-# Work with sea surface temperature (sst) fields from Earth System Models, either FOCI or CESM.
+# Work with sea level pressure (slp) fields from Earth System Models, either FOCI or CESM.
 #
 # Have random mask for missing values, individually for each data sample (mask_type='variable').
 # And only use each sample once, no data augmentation in this experiment.
@@ -15,6 +15,10 @@ from pathlib import Path
 
 import numpy as np
 
+sys.path.append(
+    "GitHub/MarcoLandtHayen/reconstruct_missing_data/reconstruct_missing_data"
+)
+
 from data_loading import (
     clone_data,
     create_missing_mask,
@@ -24,10 +28,6 @@ from data_loading import (
 )
 from models import build_unet_4conv
 
-
-sys.path.append(
-    "GitHub/MarcoLandtHayen/reconstruct_missing_data/reconstruct_missing_data"
-)
 
 
 # ## Set parameters up-front:
@@ -43,7 +43,7 @@ model_config = "unet_4conv"
 feature = "sea-surface-temperature"  # Choose either 'sea-level-pressure' or 'sea-surface-temperature' as feature.
 feature_short = "sst"  # Free to set short name, to store results, e.g. 'slp' and 'sst'.
 source = "FOCI"  # Choose Earth System Model, either 'FOCI' or 'CESM'.
-seed = 2  # Seed for random number generator, for reproducibility of missing value mask.
+seed = 3  # Seed for random number generator, for reproducibility of missing value mask.
 mask_type = "variable"  # Can have random missing values, individually for each data sample ('variable'),
 # or randomly create only a single mask, that is then applied to all samples identically ('fixed').
 missing_type = "discrete"  # Either specify discrete amounts of missing values ('discrete') or give a range ('range').
@@ -52,6 +52,7 @@ augmentation_factor = (
 )
 train_val_split = 0.8  # Set rel. amount of samples used for training.
 missing_values = [
+    0.999,
     0.99,
     0.95,
     0.9,
@@ -66,7 +67,7 @@ scale_to = "zero_one"  # Choose to scale inputs to [-1,1] ('one_one') or [0,1] (
 # To build, compile and train model:
 CNN_filters = [64, 128, 256, 512]  # [2,4,8,16] # Number of filters.
 CNN_kernel_size = 5  # Kernel size
-learning_rate = 0.0001
+learning_rate = 0.00001
 loss_function = "mse"
 epochs = 10
 batch_size = 10
@@ -74,7 +75,7 @@ batch_size = 10
 
 # Create directory to store results: Raise error, if path already exists, to avoid overwriting existing results.
 path = Path(
-    "GitGeomar/marco-landt-hayen/reconstruct_missing_data/results/"
+    "GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/"
     + model_config
     + "_"
     + feature_short
@@ -128,7 +129,12 @@ for i in range(len(missing_values)):
     print("Missing values: ", i + 1, " of ", len(missing_values))
 
     # Create sub-directory to store results: Raise error, if path already exists, to avoid overwriting existing results.
-    os.makedirs(path / "missing_" f"{int(missing*100)}", exist_ok=False)
+    
+    # Rel. amount of missing values = 0.999 requires special treatment:
+    if missing==0.999:
+        os.makedirs(path / "missing_" f"{int(missing*1000)}", exist_ok=False)
+    else:
+        os.makedirs(path / "missing_" f"{int(missing*100)}", exist_ok=False)        
 
     # Load data, including ALL fields and mask for Ocean values:
     data = load_data_set(data_path=path_to_data, data_source_name=source)
@@ -149,8 +155,12 @@ for i in range(len(missing_values)):
         seed=seed,
     )
 
-    # Store missing mask:
-    np.save(path / "missing_" f"{int(missing*100)}" / "missing_mask.npy", missing_mask)
+    # Store missing mask.
+    # Rel. amount of missing values = 0.999 requires special treatment:
+    if missing==0.999:
+        np.save(path / "missing_" f"{int(missing*1000)}" / "missing_mask.npy", missing_mask)
+    else:
+        np.save(path / "missing_" f"{int(missing*100)}" / "missing_mask.npy", missing_mask)
 
     # Use sparse data as inputs and complete data as targets. Split sparse and complete data into training and validation sets.
     # Scale or normlalize data according to statistics obtained from only training data.
@@ -174,8 +184,12 @@ for i in range(len(missing_values)):
         loss_function=loss_function,
     )
 
-    # Save untrained model:
-    model.save(path / "missing_" f"{int(missing*100)}" / f"epoch_{0}")
+    # Save untrained model.
+    # Rel. amount of missing values = 0.999 requires special treatment:
+    if missing==0.999:
+        model.save(path / "missing_" f"{int(missing*1000)}" / f"epoch_{0}")
+    else:
+        model.save(path / "missing_" f"{int(missing*100)}" / f"epoch_{0}")
 
     # Initialize storage for training and validation loss:
     train_loss = []
@@ -206,8 +220,12 @@ for i in range(len(missing_values)):
             validation_data=(val_input, val_target),
         )
 
-        # Save trained model after current epoch:
-        model.save(path / "missing_" f"{int(missing*100)}" / f"epoch_{j+1}")
+        # Save trained model after current epoch.
+        # Rel. amount of missing values = 0.999 requires special treatment:
+        if missing==0.999:
+            model.save(path / "missing_" f"{int(missing*1000)}" / f"epoch_{j+1}")
+        else:
+            model.save(path / "missing_" f"{int(missing*100)}" / f"epoch_{j+1}")
 
         # Get model predictions on train and validation data AFTER current epoch:
         train_pred = model.predict(train_input)
@@ -217,6 +235,13 @@ for i in range(len(missing_values)):
         train_loss.append(np.mean((train_pred[:, :, :, 0] - train_target) ** 2))
         val_loss.append(np.mean((val_pred[:, :, :, 0] - val_target) ** 2))
 
-    # Save loss:
-    np.save(path / "missing_" f"{int(missing*100)}" / "train_loss.npy", train_loss)
-    np.save(path / "missing_" f"{int(missing*100)}" / "val_loss.npy", val_loss)
+    # Save loss.
+    # Rel. amount of missing values = 0.999 requires special treatment:
+    if missing==0.999:
+        np.save(path / "missing_" f"{int(missing*1000)}" / "train_loss.npy", train_loss)
+        np.save(path / "missing_" f"{int(missing*1000)}" / "val_loss.npy", val_loss)
+    else:
+        np.save(path / "missing_" f"{int(missing*100)}" / "train_loss.npy", train_loss)
+        np.save(path / "missing_" f"{int(missing*100)}" / "val_loss.npy", val_loss)
+
+        

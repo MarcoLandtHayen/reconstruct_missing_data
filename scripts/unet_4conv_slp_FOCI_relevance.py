@@ -82,26 +82,26 @@ scale_to = parameters['scale_to']
 # Reload final model, trained on range:
 model = tf.keras.models.load_model(path_to_model / 'missing_50_999' / 'model')
 
-############### relevance_1
-# Specify name of experiment, to store results accordingly in a separate folder:
-exp_name = '/relevance_1'
+# ############### relevance_1
+# # Specify name of experiment, to store results accordingly in a separate folder:
+# exp_name = '/relevance_1'
 
-# Set sample number to start from:
-start_sample = 9190
+# # Set sample number to start from:
+# start_sample = 9598
 
-# Define number of validation samples to consider:
-n_samples = 5
+# # Define number of validation samples to consider:
+# n_samples = 2
 
-# Define patch size:
-patch_size = 1
+# # Define patch size:
+# patch_size = 1
 
-## Optionally define stopping criteria:
+# ## Optionally define stopping criteria:
 
-# Specify maximum number of patches to include (or set -1, to include ALL patches):
-max_patch_num = 18
+# # Specify maximum number of patches to include (or set -1, to include ALL patches):
+# max_patch_num = 18
 
-# Specify threshold for maximum accumulated rel. loss reduction (or set 1.0, for NO threshold):
-max_acc_rel_loss_reduction = 1.0    
+# # Specify threshold for maximum accumulated rel. loss reduction (or set 1.0, for NO threshold):
+# max_acc_rel_loss_reduction = 1.0    
 
 
 # ################ relevance_2
@@ -109,7 +109,7 @@ max_acc_rel_loss_reduction = 1.0
 # exp_name = '/relevance_2'
 
 # # Set sample number to start from:
-# start_sample = 0
+# start_sample = 9589
 
 # # Define number of validation samples to consider:
 # n_samples = 1
@@ -123,28 +123,28 @@ max_acc_rel_loss_reduction = 1.0
 # max_patch_num = 184
 
 # # Specify threshold for maximum accumulated rel. loss reduction (or set 1.0, for NO threshold):
-# max_acc_rel_loss_reduction = 1.0    
+# max_acc_rel_loss_reduction = 1.0
 
-# ################ relevance_3
-# # Specify name of experiment, to store results accordingly in a separate folder:
-# exp_name = '/relevance_3'
+################ relevance_3
+# Specify name of experiment, to store results accordingly in a separate folder:
+exp_name = '/relevance_3'
 
-# # Set sample number to start from:
-# start_sample = 0
+# Set sample number to start from:
+start_sample = 9589
 
-# # Define number of validation samples to consider:
-# n_samples = 1
+# Define number of validation samples to consider:
+n_samples = 1
 
-# # Define patch size:
-# patch_size = 1
+# Define patch size:
+patch_size = 1
 
-# # # Optionally define stopping criteria:
+# # Optionally define stopping criteria:
 
-# # Specify maximum number of patches to include (or set -1, to include ALL patches):
-# max_patch_num = 922
+# Specify maximum number of patches to include (or set -1, to include ALL patches):
+max_patch_num = 922
 
-# # Specify threshold for maximum accumulated rel. loss reduction (or set 1.0, for NO threshold):
-# max_acc_rel_loss_reduction = 1.0    
+# Specify threshold for maximum accumulated rel. loss reduction (or set 1.0, for NO threshold):
+max_acc_rel_loss_reduction = 1.0
 
 # ################
 

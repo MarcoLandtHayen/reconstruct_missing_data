@@ -52,8 +52,8 @@ augmentation_factor = (
 )
 train_val_split = 0.8  # Set rel. amount of samples used for training.
 missing_values = [
-    0.5,
-    0.999,
+    0.0,
+    1.0,
 ]  # Set array for desired amounts of missing values: 0.9 means, that 90% of the values are missing.
 # Or set a range by only giving minimum and maximum allowed relative amounts of missing values,
 # e.g. [0.75, 0.95], according to missing_type 'discrete' or 'range', respectively.
@@ -72,7 +72,7 @@ batch_size = 10
 # Range including rel. amount of missing values = 0.999 requires special treatment:
 if missing_values[1]==0.999:
     path = Path(
-        "GitGeomar/marco-landt-hayen/reconstruct_missing_data/results/"
+        "GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/"
         + model_config
         + "_"
         + feature_short
@@ -91,7 +91,7 @@ if missing_values[1]==0.999:
     )
 else:
     path = Path(
-        "GitGeomar/marco-landt-hayen/reconstruct_missing_data/results/"
+        "GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/"
         + model_config
         + "_"
         + feature_short
