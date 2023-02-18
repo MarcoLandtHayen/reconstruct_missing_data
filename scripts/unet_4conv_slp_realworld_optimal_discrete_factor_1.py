@@ -14,6 +14,7 @@ import sys
 from json import dump, load
 from pathlib import Path
 
+import xarray as xr
 import numpy as np
 
 sys.path.append(
@@ -35,9 +36,9 @@ from models import build_unet_4conv
 
 ## Set paths to optimal missing masks as strings:
 paths_to_missing_masks_string = [
-    'GitGeomar/marco-landt-hayen/reconstruct_missing_data/results/unet_4conv_slp_CESM_variable_range_50_999_factor_3_final/relevance_1',
-#    'GitGeomar/marco-landt-hayen/reconstruct_missing_data/results/unet_4conv_slp_CESM_variable_range_50_999_factor_3_final/relevance_2',
-#    'GitGeomar/marco-landt-hayen/reconstruct_missing_data/results/unet_4conv_slp_CESM_variable_range_50_999_factor_3_final/relevance_3',
+    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_CESM_variable_range_50_999_factor_3_final/relevance_1',
+    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_CESM_variable_range_50_999_factor_3_final/relevance_2',
+    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_CESM_variable_range_50_999_factor_3_final/relevance_3',
 ]
 
 ## Create paths to optimal missing masks as PosixPaths:
@@ -47,7 +48,7 @@ for temp_path in paths_to_missing_masks_string:
 
 ## Decide to work on test data or full data:
 # path_to_data = 'GitHub/MarcoLandtHayen/reconstruct_missing_data/data/test_data/' # Test data
-path_to_data = "climate_index_collection/data/raw/2022-08-22/"  # Full data
+path_to_data = "GitHub/MarcoLandtHayen/reconstruct_missing_data/data/raw/pres.sfc.mon.mean.nc"  # Full data
 
 # Model configuration, to store results:
 model_config = "unet_4conv"
@@ -55,11 +56,11 @@ model_config = "unet_4conv"
 # Data loading and preprocessing:
 feature = "sea-level-pressure"  # Choose either 'sea-level-pressure' or 'sea-surface-temperature' as feature.
 feature_short = "slp"  # Free to set short name, to store results, e.g. 'slp' and 'sst'.
-source = "CESM"  # Choose Earth System Model, either 'FOCI' or 'CESM'.
+source = "realworld"  # Choose Earth System Model, either 'FOCI' or 'CESM'.
 seed = 1  # Seed for random number generator, for reproducibility of missing value mask.
-run = "_run_30" # Specify run number (or '_final'). Don't need seed, since we use optimal fixed mask.
+run = "_final" # Specify run number (or '_final'). Don't need seed, since we use optimal fixed mask.
 mask_source = paths_to_missing_masks_string  # Paths to experiments, that produced optimal sampling masks, as strings.
-mask_type = "optimal"  # Can have random missing values, individually for each data sample ('variable'),
+mask_type = "optimal_from_CESM"  # Can have random missing values, individually for each data sample ('variable'),
 # or randomly create only a single mask, that is then applied to all samples identically ('fixed'),
 # or use fixed mask with optimal grip points, leading to strongest reduction in rel. loss ('optimal').
 missing_type = "discrete"  # Either specify discrete amounts of missing values ('discrete') or give a range ('range').
@@ -69,8 +70,8 @@ augmentation_factor = (
 train_val_split = 0.8  # Set rel. amount of samples used for training.
 missing_values = [
     0.999,
-#    0.99,
-#    0.95,
+    0.99,
+    0.95,
 ]  # Set array for desired amounts of missing values: 0.9 means, that 90% of the values are missing.
 # Or set a range by only giving minimum and maximum allowed relative amounts of missing values,
 # e.g. [0.75, 0.95], according to missing_type 'discrete' or 'range', respectively.
@@ -87,7 +88,7 @@ batch_size = 10
 
 # Create directory to store results: Raise error, if path already exists, to avoid overwriting existing results.
 path = Path(
-    "GitGeomar/marco-landt-hayen/reconstruct_missing_data/results/"
+    "GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/"
     + model_config
     + "_"
     + feature_short
@@ -129,8 +130,34 @@ with open(path / "parameters.json", "w") as f:
     dump(parameters, f)
 
 
-# # Train models:
+# # Load data:
 
+# Open data set:
+slp_dataset=xr.open_dataset(path_to_data)
+
+# Start with raw slp fields as lat/lon grids in time, from 1948 to 2022:
+slp_fields = (
+    slp_dataset.pres
+    .sel(time=slice('1948-01-01', '2022-12-01'))
+)
+
+# Compute monthly climatology (here 1980 - 2009) for whole world:
+slp_climatology_fields = (
+    slp_dataset.pres
+    .sel(time=slice('1980-01-01','2009-12-01'))
+    .groupby("time.month")
+    .mean("time")
+)
+
+# Get slp anomaly fields by subtracting monthly climatology from raw slp fields:
+slp_anomaly_fields = slp_fields.groupby("time.month") - slp_climatology_fields
+
+# Remove last row (latidute), to have equal number of steps in latitude (=72). This serves as 'quick-and-dirty'
+# solution to avoid problems with UPSAMPLING in U-Net. There must be a more elegant way, take care of it later!
+slp_anomaly_fields = slp_anomaly_fields.values[:,:-1,:]
+
+
+# # Train models:
 
 # Loop over array of desired amounts of missing values:
 for i in range(len(missing_values)):
@@ -146,24 +173,18 @@ for i in range(len(missing_values)):
     else:
         os.makedirs(path / "missing_" f"{int(missing*100)}", exist_ok=False)        
 
-    # Load data, including ALL fields and mask for Ocean values:
-    data = load_data_set(data_path=path_to_data, data_source_name=source)
-
-    # Select single feature and compute anomalies, using whole time span as climatology:
-    data = get_anomalies(feature=feature, data_set=data)
-
     # Extend data, if desired:
-    data = clone_data(data=data, augmentation_factor=augmentation_factor)
+    data = clone_data(data=slp_anomaly_fields, augmentation_factor=augmentation_factor)
 
     # Reload optimal mask for missing values.
     # Rel. amount of missing values = 0.999 requires special treatment:
     if missing==0.999:
-        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*1000))+"_kmeans_3D.npy"
+        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*1000))+"_realworld.npy"
         missing_mask = np.load(
             paths_to_missing_masks[i] / filename_missing_mask
         )
     else:
-        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*100))+"_kmeans_3D.npy"
+        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*100))+"_realworld.npy"
         missing_mask = np.load(
             paths_to_missing_masks[i] / filename_missing_mask
         )
