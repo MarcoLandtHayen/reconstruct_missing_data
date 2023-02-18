@@ -2,7 +2,7 @@
 #
 # Following [Xiantao et al., 2020] approach: Test U-Net to reconstruct complete data from sparse inputs.
 # Opposed to their net, only have 4 instead of 5 convolutional layers.
-# Work with sea level pressure (slp) fields from Earth System Models, either FOCI or CESM.
+# Work with sea surface temperature (sst) fields from Earth System Models, either FOCI or CESM.
 #
 # Apply optimal mask of missing values, which is identical to all samples (mask_type='fixed').
 # Got optimal mask from rel. loss reduction map, obtained on validation samples with range model.
@@ -35,9 +35,9 @@ from models import build_unet_4conv
 
 ## Set paths to optimal missing masks as strings:
 paths_to_missing_masks_string = [
-    'GitGeomar/marco-landt-hayen/reconstruct_missing_data/results/unet_4conv_slp_CESM_variable_range_50_999_factor_3_final/relevance_1',
-#    'GitGeomar/marco-landt-hayen/reconstruct_missing_data/results/unet_4conv_slp_CESM_variable_range_50_999_factor_3_final/relevance_2',
-#    'GitGeomar/marco-landt-hayen/reconstruct_missing_data/results/unet_4conv_slp_CESM_variable_range_50_999_factor_3_final/relevance_3',
+    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_CESM_variable_range_25_999_factor_3_final/relevance_1',
+#    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_CESM_variable_range_25_999_factor_3_final/relevance_2',
+#    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_CESM_variable_range_25_999_factor_3_final/relevance_3',
 ]
 
 ## Create paths to optimal missing masks as PosixPaths:
@@ -53,11 +53,11 @@ path_to_data = "climate_index_collection/data/raw/2022-08-22/"  # Full data
 model_config = "unet_4conv"
 
 # Data loading and preprocessing:
-feature = "sea-level-pressure"  # Choose either 'sea-level-pressure' or 'sea-surface-temperature' as feature.
-feature_short = "slp"  # Free to set short name, to store results, e.g. 'slp' and 'sst'.
+feature = "sea-surface-temperature"  # Choose either 'sea-level-pressure' or 'sea-surface-temperature' as feature.
+feature_short = "sst"  # Free to set short name, to store results, e.g. 'slp' and 'sst'.
 source = "CESM"  # Choose Earth System Model, either 'FOCI' or 'CESM'.
 seed = 1  # Seed for random number generator, for reproducibility of missing value mask.
-run = "_run_30" # Specify run number (or '_final'). Don't need seed, since we use optimal fixed mask.
+run = "_run_1" # Specify run number (or '_final'). Don't need seed, since we use optimal fixed mask.
 mask_source = paths_to_missing_masks_string  # Paths to experiments, that produced optimal sampling masks, as strings.
 mask_type = "optimal"  # Can have random missing values, individually for each data sample ('variable'),
 # or randomly create only a single mask, that is then applied to all samples identically ('fixed'),
@@ -79,7 +79,7 @@ scale_to = "zero_one"  # Choose to scale inputs to [-1,1] ('one_one') or [0,1] (
 # To build, compile and train model:
 CNN_filters = [64, 128, 256, 512]  # [2,4,8,16] # Number of filters.
 CNN_kernel_size = 5  # Kernel size
-learning_rate = 0.0001
+learning_rate = 0.00001
 loss_function = "mse"
 epochs = 10
 batch_size = 10
@@ -87,7 +87,7 @@ batch_size = 10
 
 # Create directory to store results: Raise error, if path already exists, to avoid overwriting existing results.
 path = Path(
-    "GitGeomar/marco-landt-hayen/reconstruct_missing_data/results/"
+    "GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/"
     + model_config
     + "_"
     + feature_short
@@ -158,12 +158,12 @@ for i in range(len(missing_values)):
     # Reload optimal mask for missing values.
     # Rel. amount of missing values = 0.999 requires special treatment:
     if missing==0.999:
-        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*1000))+"_kmeans_3D.npy"
+        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*1000))+".npy"
         missing_mask = np.load(
             paths_to_missing_masks[i] / filename_missing_mask
         )
     else:
-        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*100))+"_kmeans_3D.npy"
+        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*100))+".npy"
         missing_mask = np.load(
             paths_to_missing_masks[i] / filename_missing_mask
         )

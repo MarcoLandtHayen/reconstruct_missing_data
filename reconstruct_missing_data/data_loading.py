@@ -254,7 +254,7 @@ def create_missing_mask(data, mask_type, missing_type, missing_min, missing_max,
     Parameters
     ----------
     data: numpy.ndarray
-        Data set containing complete 2D fields.
+        Data set containing complete 2D fields or flattened 1D fields.
     mask_type: string
         Can have random mask for missing values, individually for each data sample ('variable').
         Or create only a single random mask, that is then applied to all samples identically ('fixed').
@@ -279,10 +279,22 @@ def create_missing_mask(data, mask_type, missing_type, missing_min, missing_max,
 
         # Get single mask of missing values and repeat this mask for all samples:
         np.random.seed(seed)
-        missing_mask_single = (
-            np.random.uniform(low=0.0, high=1.0, size=(1, data.shape[1], data.shape[2]))
-            > missing_min
-        )
+
+        # Check dimensions: Do we have flat or 2D field as data?
+        if len(data.shape)==3:
+
+            missing_mask_single = (
+                np.random.uniform(low=0.0, high=1.0, size=(1, data.shape[1], data.shape[2]))
+                > missing_min
+            )
+            
+        else:
+            
+            missing_mask_single = (
+                np.random.uniform(low=0.0, high=1.0, size=(1, data.shape[1]))
+                > missing_min
+            )
+
         missing_mask = np.repeat(missing_mask_single, data.shape[0], axis=0)
 
     elif mask_type == "variable":

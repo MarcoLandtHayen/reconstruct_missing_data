@@ -60,7 +60,16 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_discrete_factor_1_final'
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_discrete_factor_2_final'
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_discrete_factor_3_final'
-path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_optimal_discrete_factor_1_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_optimal_discrete_factor_1_final'
+
+# slp realworld:
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_realworld_fixed_discrete_factor_1_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_realworld_variable_discrete_factor_1_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_realworld_variable_discrete_factor_2_final'
+path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_realworld_variable_discrete_factor_3_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_realworld_optimal_discrete_factor_1_final'
+
+
 
 # Reload parameters for this experiment:
 with open(Path(path_to_final_model) / 'parameters.json', 'r') as f:
@@ -76,27 +85,75 @@ train_val_split = parameters['train_val_split']
 missing_values = parameters['missing_values'] #or set manually: [0.999, 0.99, 0.95, 0.9, 0.75, 0.5] 
 scale_to = parameters['scale_to']
 
-# Path to full data:
-path_to_data = 'climate_index_collection/data/raw/2022-08-22/'
+# Real world data needs separate pre-processing:
+if source == 'realworld':
+    
+    # Path to full data:
+    path_to_data = "GitHub/MarcoLandtHayen/reconstruct_missing_data/data/raw/pres.sfc.mon.mean.nc"  
 
-# Load data:
-data = load_data_set(data_path=path_to_data, data_source_name=source)
+    ## Load data:
 
-# Extract time, latitude and longitude dimensions:
-time = data['time']
-latitude = data['lat']
-longitude = data['lon']
+    # Open data set:
+    slp_dataset=xr.open_dataset(path_to_data)
 
-# Get number of train and validation samples: Consider augmentation factor!
-n_train = int(len(data[feature]) * augmentation_factor * train_val_split)
-n_val = ((len(data[feature]) * augmentation_factor) - n_train)
+    # Extract time, latitude and longitude dimensions.
+    # Already consider, that time dimension and latitude are sliced below: Omit last entry, in either case.
+    time = slp_dataset['time'][:-1]
+    latitude = slp_dataset['lat'][:-1]
+    longitude = slp_dataset['lon']
+   
+    # Start with raw slp fields as lat/lon grids in time, from 1948 to 2022:
+    slp_fields = (
+        slp_dataset.pres
+        .sel(time=slice('1948-01-01', '2022-12-01'))
+    )
+    
+    # Get number of train and validation samples: Consider augmentation factor!
+    n_train = int(len(slp_fields) * augmentation_factor * train_val_split)
+    n_val = ((len(slp_fields) * augmentation_factor) - n_train)
 
-# Select single feature and compute anomalies, using whole time span as climatology:
-data = get_anomalies(feature=feature, data_set=data)
+    # Compute monthly climatology (here 1980 - 2009) for whole world:
+    slp_climatology_fields = (
+        slp_dataset.pres
+        .sel(time=slice('1980-01-01','2009-12-01'))
+        .groupby("time.month")
+        .mean("time")
+    )
 
-# Extend data, if desired:
-data = clone_data(data=data, augmentation_factor=augmentation_factor)
+    # Get slp anomaly fields by subtracting monthly climatology from raw slp fields:
+    slp_anomaly_fields = slp_fields.groupby("time.month") - slp_climatology_fields
 
+    # Remove last row (latidute), to have equal number of steps in latitude (=72). This serves as 'quick-and-dirty'
+    # solution to avoid problems with UPSAMPLING in U-Net. There must be a more elegant way, take care of it later!
+    slp_anomaly_fields = slp_anomaly_fields.values[:,:-1,:]
+
+    # Extend data, if desired:
+    data = clone_data(data=slp_anomaly_fields, augmentation_factor=augmentation_factor)
+
+else:
+
+    # Path to full data:
+    path_to_data = 'climate_index_collection/data/raw/2022-08-22/'
+
+    # Load data:
+    data = load_data_set(data_path=path_to_data, data_source_name=source)
+
+    # Extract time, latitude and longitude dimensions:
+    time = data['time']
+    latitude = data['lat']
+    longitude = data['lon']
+
+    # Get number of train and validation samples: Consider augmentation factor!
+    n_train = int(len(data[feature]) * augmentation_factor * train_val_split)
+    n_val = ((len(data[feature]) * augmentation_factor) - n_train)
+
+    # Select single feature and compute anomalies, using whole time span as climatology:
+    data = get_anomalies(feature=feature, data_set=data)
+
+    # Extend data, if desired:
+    data = clone_data(data=data, augmentation_factor=augmentation_factor)
+
+    
 # Extend time dimension, according to augmentation factor:
 for t in range(len(time)):
 
