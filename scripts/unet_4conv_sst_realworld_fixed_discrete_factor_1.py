@@ -68,7 +68,7 @@ scale_to = "zero_one"  # Choose to scale inputs to [-1,1] ('one_one') or [0,1] (
 # To build, compile and train model:
 CNN_filters = [64, 128, 256, 512]  # [2,4,8,16] # Number of filters.
 CNN_kernel_size = 5  # Kernel size
-learning_rate = 0.00001
+learning_rate = 0.00005
 loss_function = "mse"
 epochs = 10
 batch_size = 10
@@ -266,9 +266,8 @@ for i in range(len(missing_values)):
         np.save(path / "missing_" f"{int(missing*100)}" / "val_loss.npy", val_loss)
         
         
-        
-        
 
+        
 # ## Set parameters up-front:
 
 ## Decide to work on test data or full data:
@@ -306,7 +305,7 @@ scale_to = "zero_one"  # Choose to scale inputs to [-1,1] ('one_one') or [0,1] (
 # To build, compile and train model:
 CNN_filters = [64, 128, 256, 512]  # [2,4,8,16] # Number of filters.
 CNN_kernel_size = 5  # Kernel size
-learning_rate = 0.00001
+learning_rate = 0.00005
 loss_function = "mse"
 epochs = 10
 batch_size = 10
@@ -502,12 +501,10 @@ for i in range(len(missing_values)):
     else:
         np.save(path / "missing_" f"{int(missing*100)}" / "train_loss.npy", train_loss)
         np.save(path / "missing_" f"{int(missing*100)}" / "val_loss.npy", val_loss)
-
-        
-        
         
         
 
+        
 # ## Set parameters up-front:
 
 ## Decide to work on test data or full data:
@@ -545,7 +542,7 @@ scale_to = "zero_one"  # Choose to scale inputs to [-1,1] ('one_one') or [0,1] (
 # To build, compile and train model:
 CNN_filters = [64, 128, 256, 512]  # [2,4,8,16] # Number of filters.
 CNN_kernel_size = 5  # Kernel size
-learning_rate = 0.00001
+learning_rate = 0.00005
 loss_function = "mse"
 epochs = 10
 batch_size = 10
@@ -741,12 +738,10 @@ for i in range(len(missing_values)):
     else:
         np.save(path / "missing_" f"{int(missing*100)}" / "train_loss.npy", train_loss)
         np.save(path / "missing_" f"{int(missing*100)}" / "val_loss.npy", val_loss)
-
-        
-        
         
         
 
+        
 # ## Set parameters up-front:
 
 ## Decide to work on test data or full data:
@@ -784,7 +779,7 @@ scale_to = "zero_one"  # Choose to scale inputs to [-1,1] ('one_one') or [0,1] (
 # To build, compile and train model:
 CNN_filters = [64, 128, 256, 512]  # [2,4,8,16] # Number of filters.
 CNN_kernel_size = 5  # Kernel size
-learning_rate = 0.00001
+learning_rate = 0.00005
 loss_function = "mse"
 epochs = 10
 batch_size = 10
@@ -980,12 +975,10 @@ for i in range(len(missing_values)):
     else:
         np.save(path / "missing_" f"{int(missing*100)}" / "train_loss.npy", train_loss)
         np.save(path / "missing_" f"{int(missing*100)}" / "val_loss.npy", val_loss)
-
-        
-        
         
         
 
+        
 # ## Set parameters up-front:
 
 ## Decide to work on test data or full data:
@@ -1023,7 +1016,7 @@ scale_to = "zero_one"  # Choose to scale inputs to [-1,1] ('one_one') or [0,1] (
 # To build, compile and train model:
 CNN_filters = [64, 128, 256, 512]  # [2,4,8,16] # Number of filters.
 CNN_kernel_size = 5  # Kernel size
-learning_rate = 0.00001
+learning_rate = 0.00005
 loss_function = "mse"
 epochs = 10
 batch_size = 10
@@ -1219,4 +1212,5 @@ for i in range(len(missing_values)):
     else:
         np.save(path / "missing_" f"{int(missing*100)}" / "train_loss.npy", train_loss)
         np.save(path / "missing_" f"{int(missing*100)}" / "val_loss.npy", val_loss)
-
+        
+        

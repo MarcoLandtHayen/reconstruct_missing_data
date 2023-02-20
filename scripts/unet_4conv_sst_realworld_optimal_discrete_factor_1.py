@@ -2,7 +2,7 @@
 #
 # Following [Xiantao et al., 2020] approach: Test U-Net to reconstruct complete data from sparse inputs.
 # Opposed to their net, only have 4 instead of 5 convolutional layers.
-# Work with sea level pressure (slp) fields from Earth System Models, either FOCI or CESM.
+# Work with sea surface temperature (sst) fields from Earth System Models, either FOCI or CESM.
 #
 # Apply optimal mask of missing values, which is identical to all samples (mask_type='fixed').
 # Got optimal mask from rel. loss reduction map, obtained on validation samples with range model.
@@ -14,6 +14,7 @@ import sys
 from json import dump, load
 from pathlib import Path
 
+import xarray as xr
 import numpy as np
 
 sys.path.append(
@@ -34,10 +35,16 @@ from models import build_unet_4conv
 # ## Set parameters up-front:
 
 ## Set paths to optimal missing masks as strings:
+# paths_to_missing_masks_string = [
+#     'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_CESM_variable_range_25_999_factor_3_final/relevance_1',
+#     'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_CESM_variable_range_25_999_factor_3_final/relevance_2',
+#     'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_CESM_variable_range_25_999_factor_3_final/relevance_2',
+# ]
+
 paths_to_missing_masks_string = [
-    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_CESM_variable_range_50_999_factor_3_final/relevance_1',
-#    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_CESM_variable_range_50_999_factor_3_final/relevance_2',
-#    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_CESM_variable_range_50_999_factor_3_final/relevance_3',
+#    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_variable_range_25_999_factor_3_final/relevance_1',
+    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_variable_range_25_999_factor_3_final/relevance_2',
+#    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_variable_range_25_999_factor_3_final/relevance_2',
 ]
 
 ## Create paths to optimal missing masks as PosixPaths:
@@ -47,19 +54,19 @@ for temp_path in paths_to_missing_masks_string:
 
 ## Decide to work on test data or full data:
 # path_to_data = 'GitHub/MarcoLandtHayen/reconstruct_missing_data/data/test_data/' # Test data
-path_to_data = "climate_index_collection/data/raw/2022-08-22/"  # Full data
+path_to_data = "GitHub/MarcoLandtHayen/reconstruct_missing_data/data/raw/sst.mnmean.nc"  # Full data
 
 # Model configuration, to store results:
 model_config = "unet_4conv"
 
 # Data loading and preprocessing:
-feature = "sea-level-pressure"  # Choose either 'sea-level-pressure' or 'sea-surface-temperature' as feature.
-feature_short = "slp"  # Free to set short name, to store results, e.g. 'slp' and 'sst'.
-source = "CESM"  # Choose Earth System Model, either 'FOCI' or 'CESM'.
-seed = 1  # Seed for random number generator, for reproducibility of missing value mask.
-run = "_run_2" # Specify run number (or '_final'). Don't need seed, since we use optimal fixed mask.
+feature = "sea-surface-temperature"  # Choose either 'sea-level-pressure' or 'sea-surface-temperature' as feature.
+feature_short = "sst"  # Free to set short name, to store results, e.g. 'slp' and 'sst'.
+source = "realworld"  # Choose Earth System Model, either 'FOCI' or 'CESM'.
+seed = 2  # Seed for random number generator, for reproducibility of missing value mask.
+run = "_run_4" # Specify run number (or '_final'). Don't need seed, since we use optimal fixed mask.
 mask_source = paths_to_missing_masks_string  # Paths to experiments, that produced optimal sampling masks, as strings.
-mask_type = "optimal"  # Can have random missing values, individually for each data sample ('variable'),
+mask_type = "optimal_from_FOCI"  # Can have random missing values, individually for each data sample ('variable'),
 # or randomly create only a single mask, that is then applied to all samples identically ('fixed'),
 # or use fixed mask with optimal grip points, leading to strongest reduction in rel. loss ('optimal').
 missing_type = "discrete"  # Either specify discrete amounts of missing values ('discrete') or give a range ('range').
@@ -68,8 +75,8 @@ augmentation_factor = (
 )
 train_val_split = 0.8  # Set rel. amount of samples used for training.
 missing_values = [
-    0.999,
-#    0.99,
+#    0.999,
+    0.99,
 #    0.95,
 ]  # Set array for desired amounts of missing values: 0.9 means, that 90% of the values are missing.
 # Or set a range by only giving minimum and maximum allowed relative amounts of missing values,
@@ -79,9 +86,9 @@ scale_to = "zero_one"  # Choose to scale inputs to [-1,1] ('one_one') or [0,1] (
 # To build, compile and train model:
 CNN_filters = [64, 128, 256, 512]  # [2,4,8,16] # Number of filters.
 CNN_kernel_size = 5  # Kernel size
-learning_rate = 0.0001
+learning_rate = 0.00005
 loss_function = "mse"
-epochs = 15
+epochs = 20
 batch_size = 10
 
 
@@ -129,8 +136,34 @@ with open(path / "parameters.json", "w") as f:
     dump(parameters, f)
 
 
-# # Train models:
+# # Load data:
 
+# Open data set:
+sst_dataset=xr.open_dataset("GitHub/MarcoLandtHayen/reconstruct_missing_data/data/raw/sst.mnmean.nc")
+
+# Start with raw slp fields as lat/lon grids in time, from 1948 to 2022:
+sst_fields = (
+    sst_dataset.sst
+    .sel(time=slice('1880-01-01', '2022-12-01'))
+)
+
+# Compute monthly climatology (here 1980 - 2009) for whole world:
+sst_climatology_fields = (
+    sst_dataset.sst
+    .sel(time=slice('1980-01-01','2009-12-01'))
+    .groupby("time.month")
+    .mean("time")
+)
+
+# Get slp anomaly fields by subtracting monthly climatology from raw slp fields:
+sst_anomaly_fields = sst_fields.groupby("time.month") - sst_climatology_fields
+
+# Remove last row (latidute) and last 4 columns (longitude), to have even number of steps in latitude (=88)
+# and longitude (=176), that can be evenly divided 4 times by two. This serves as 'quick-and-dirty'
+# solution to avoid problems with UPSAMPLING in U-Net. There must be a more elegant way, take care of it later!
+sst_anomaly_fields = sst_anomaly_fields.values[:,:-1,:-4]
+
+# # Train models:
 
 # Loop over array of desired amounts of missing values:
 for i in range(len(missing_values)):
@@ -146,24 +179,18 @@ for i in range(len(missing_values)):
     else:
         os.makedirs(path / "missing_" f"{int(missing*100)}", exist_ok=False)        
 
-    # Load data, including ALL fields and mask for Ocean values:
-    data = load_data_set(data_path=path_to_data, data_source_name=source)
-
-    # Select single feature and compute anomalies, using whole time span as climatology:
-    data = get_anomalies(feature=feature, data_set=data)
-
     # Extend data, if desired:
-    data = clone_data(data=data, augmentation_factor=augmentation_factor)
+    data = clone_data(data=sst_anomaly_fields, augmentation_factor=augmentation_factor)
 
     # Reload optimal mask for missing values.
     # Rel. amount of missing values = 0.999 requires special treatment:
     if missing==0.999:
-        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*1000))+".npy"
+        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*1000))+"_realworld.npy"
         missing_mask = np.load(
             paths_to_missing_masks[i] / filename_missing_mask
         )
     else:
-        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*100))+".npy"
+        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*100))+"_realworld.npy"
         missing_mask = np.load(
             paths_to_missing_masks[i] / filename_missing_mask
         )
