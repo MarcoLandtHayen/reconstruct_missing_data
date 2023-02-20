@@ -41,6 +41,12 @@ paths_to_missing_masks_string = [
     'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_CESM_variable_range_50_999_factor_3_final/relevance_3',
 ]
 
+# paths_to_missing_masks_string = [
+#     'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_range_50_999_factor_3_final/relevance_1',
+#      'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_range_50_999_factor_3_final/relevance_2',
+#      'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_range_50_999_factor_3_final/relevance_3',
+# ]
+
 ## Create paths to optimal missing masks as PosixPaths:
 paths_to_missing_masks = []
 for temp_path in paths_to_missing_masks_string:
@@ -58,7 +64,7 @@ feature = "sea-level-pressure"  # Choose either 'sea-level-pressure' or 'sea-sur
 feature_short = "slp"  # Free to set short name, to store results, e.g. 'slp' and 'sst'.
 source = "realworld"  # Choose Earth System Model, either 'FOCI' or 'CESM'.
 seed = 1  # Seed for random number generator, for reproducibility of missing value mask.
-run = "_final" # Specify run number (or '_final'). Don't need seed, since we use optimal fixed mask.
+run = "_run_4" # Specify run number (or '_final'). Don't need seed, since we use optimal fixed mask.
 mask_source = paths_to_missing_masks_string  # Paths to experiments, that produced optimal sampling masks, as strings.
 mask_type = "optimal_from_CESM"  # Can have random missing values, individually for each data sample ('variable'),
 # or randomly create only a single mask, that is then applied to all samples identically ('fixed'),
@@ -179,12 +185,12 @@ for i in range(len(missing_values)):
     # Reload optimal mask for missing values.
     # Rel. amount of missing values = 0.999 requires special treatment:
     if missing==0.999:
-        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*1000))+"_realworld.npy"
+        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*1000))+"_realworld_truncated.npy"
         missing_mask = np.load(
             paths_to_missing_masks[i] / filename_missing_mask
         )
     else:
-        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*100))+"_realworld.npy"
+        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*100))+"_realworld_truncated.npy"
         missing_mask = np.load(
             paths_to_missing_masks[i] / filename_missing_mask
         )

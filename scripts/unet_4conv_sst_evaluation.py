@@ -32,6 +32,8 @@ from indices import (
     southern_annular_mode_zonal_mean,
     north_atlantic_oscillation_station,
     north_pacific,
+    el_nino_southern_oscillation_34,
+    atlantic_multidecadal_oscillation,
 )
 
 import tensorflow as tf
@@ -48,27 +50,28 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 # Set path to final model:
 
-# slp CESM:
-#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_CESM_fixed_discrete_factor_1_final'
-#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_CESM_variable_discrete_factor_1_final'
-#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_CESM_variable_discrete_factor_2_final'
-#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_CESM_variable_discrete_factor_3_final'
-#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_CESM_optimal_discrete_factor_1_final'
+# sst CESM:
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_CESM_fixed_discrete_factor_1_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_CESM_variable_discrete_factor_1_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_CESM_variable_discrete_factor_2_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_CESM_variable_discrete_factor_3_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_CESM_optimal_discrete_factor_1_final'
 
-# slp FOCI:
-#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_fixed_discrete_factor_1_final'
-#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_discrete_factor_1_final'
-#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_discrete_factor_2_final'
-#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_discrete_factor_3_final'
-path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_optimal_discrete_factor_1_final'
+# sst FOCI:
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_fixed_discrete_factor_1_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_variable_discrete_factor_1_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_variable_discrete_factor_2_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_variable_discrete_factor_3_final'
+path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_optimal_discrete_factor_1_final'
 
-# slp realworld:
-#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_realworld_fixed_discrete_factor_1_final'
-#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_realworld_variable_discrete_factor_1_final'
-#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_realworld_variable_discrete_factor_2_final'
-#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_realworld_variable_discrete_factor_3_final'
-#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_realworld_optimal_from_CESM_discrete_factor_1_final'
-#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_realworld_optimal_from_FOCI_discrete_factor_1_final'
+# sst realworld:
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_realworld_fixed_discrete_factor_1_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_realworld_variable_discrete_factor_1_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_realworld_variable_discrete_factor_2_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_realworld_variable_discrete_factor_3_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_realworld_optimal_from_CESM_discrete_factor_1_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_realworld_optimal_from_FOCI_discrete_factor_1_final'
+
 
 
 
@@ -90,46 +93,47 @@ scale_to = parameters['scale_to']
 if source == 'realworld':
     
     # Path to full data:
-    path_to_data = "GitHub/MarcoLandtHayen/reconstruct_missing_data/data/raw/pres.sfc.mon.mean.nc"  
+    path_to_data = "GitHub/MarcoLandtHayen/reconstruct_missing_data/data/raw/sst.mnmean.nc"  
 
     ## Load data:
 
     # Open data set:
-    slp_dataset=xr.open_dataset(path_to_data)
+    sst_dataset=xr.open_dataset(path_to_data)
+  
+    # Start with raw slp fields as lat/lon grids in time, from 1948 to 2022:
+    sst_fields = (
+        sst_dataset.sst
+        .sel(time=slice('1880-01-01', '2022-12-01'))
+    )
 
     # Extract time, latitude and longitude dimensions.
-    # Already consider, that time dimension and latitude are sliced below: Omit last entry, in either case.
-    time = slp_dataset['time'][:-1]
-    latitude = slp_dataset['lat'][:-1]
-    longitude = slp_dataset['lon']
-   
-    # Start with raw slp fields as lat/lon grids in time, from 1948 to 2022:
-    slp_fields = (
-        slp_dataset.pres
-        .sel(time=slice('1948-01-01', '2022-12-01'))
-    )
+    # Already consider, that latitude and longitude are truncated below:
+    time = sst_fields['time']
+    latitude = sst_fields['lat'][:-1]
+    longitude = sst_fields['lon'][:-4]
     
     # Get number of train and validation samples: Consider augmentation factor!
-    n_train = int(len(slp_fields) * augmentation_factor * train_val_split)
-    n_val = ((len(slp_fields) * augmentation_factor) - n_train)
-
+    n_train = int(len(sst_fields) * augmentation_factor * train_val_split)
+    n_val = ((len(sst_fields) * augmentation_factor) - n_train)
+    
     # Compute monthly climatology (here 1980 - 2009) for whole world:
-    slp_climatology_fields = (
-        slp_dataset.pres
+    sst_climatology_fields = (
+        sst_dataset.sst
         .sel(time=slice('1980-01-01','2009-12-01'))
         .groupby("time.month")
         .mean("time")
     )
 
     # Get slp anomaly fields by subtracting monthly climatology from raw slp fields:
-    slp_anomaly_fields = slp_fields.groupby("time.month") - slp_climatology_fields
+    sst_anomaly_fields = sst_fields.groupby("time.month") - sst_climatology_fields
 
-    # Remove last row (latidute), to have equal number of steps in latitude (=72). This serves as 'quick-and-dirty'
+    # Remove last row (latidute) and last 4 columns (longitude), to have even number of steps in latitude (=88)
+    # and longitude (=176), that can be evenly divided 4 times by two. This serves as 'quick-and-dirty'
     # solution to avoid problems with UPSAMPLING in U-Net. There must be a more elegant way, take care of it later!
-    slp_anomaly_fields = slp_anomaly_fields.values[:,:-1,:]
-
+    sst_anomaly_fields = sst_anomaly_fields.values[:,:-1,:-4]
+   
     # Extend data, if desired:
-    data = clone_data(data=slp_anomaly_fields, augmentation_factor=augmentation_factor)
+    data = clone_data(data=sst_anomaly_fields, augmentation_factor=augmentation_factor)
 
 else:
 
@@ -154,7 +158,7 @@ else:
     # Extend data, if desired:
     data = clone_data(data=data, augmentation_factor=augmentation_factor)
 
-    
+
 # Extend time dimension, according to augmentation factor:
 for t in range(len(time)):
 
@@ -184,20 +188,15 @@ train_loss_map_all = np.zeros((len(missing_values),data.shape[1],data.shape[2]))
 val_loss_map_all = np.zeros((len(missing_values),data.shape[1],data.shape[2]))
 
 # Initialize storage for indices, dimension: (#missing values, #samples)
-SAM_train_pred_all = np.zeros((len(missing_values),n_train))
-SAM_val_pred_all = np.zeros((len(missing_values),n_val))
-SAM_train_target_all = np.zeros((len(missing_values),n_train))
-SAM_val_target_all = np.zeros((len(missing_values),n_val))
+ENSO_train_pred_all = np.zeros((len(missing_values),n_train))
+ENSO_val_pred_all = np.zeros((len(missing_values),n_val))
+ENSO_train_target_all = np.zeros((len(missing_values),n_train))
+ENSO_val_target_all = np.zeros((len(missing_values),n_val))
 
-NAO_train_pred_all = np.zeros((len(missing_values),n_train))
-NAO_val_pred_all = np.zeros((len(missing_values),n_val))
-NAO_train_target_all = np.zeros((len(missing_values),n_train))
-NAO_val_target_all = np.zeros((len(missing_values),n_val))
-
-NP_train_pred_all = np.zeros((len(missing_values),n_train))
-NP_val_pred_all = np.zeros((len(missing_values),n_val))
-NP_train_target_all = np.zeros((len(missing_values),n_train))
-NP_val_target_all = np.zeros((len(missing_values),n_val))
+AMO_train_pred_all = np.zeros((len(missing_values),n_train))
+AMO_val_pred_all = np.zeros((len(missing_values),n_val))
+AMO_train_target_all = np.zeros((len(missing_values),n_train))
+AMO_val_target_all = np.zeros((len(missing_values),n_val))
 
 # Loop over rel. amounts of missing values:
 for i in range(len(missing_values)):
@@ -277,51 +276,38 @@ for i in range(len(missing_values)):
     )   
     
     # Compute indices:
-    SAM_train_pred = southern_annular_mode_zonal_mean(train_pred_xr).values
-    SAM_val_pred = southern_annular_mode_zonal_mean(val_pred_xr).values
-    SAM_train_target = southern_annular_mode_zonal_mean(train_target_xr).values
-    SAM_val_target = southern_annular_mode_zonal_mean(val_target_xr).values
+    ENSO_train_pred = el_nino_southern_oscillation_34(train_pred_xr).values
+    ENSO_val_pred = el_nino_southern_oscillation_34(val_pred_xr).values
+    ENSO_train_target = el_nino_southern_oscillation_34(train_target_xr).values
+    ENSO_val_target = el_nino_southern_oscillation_34(val_target_xr).values
 
-    NAO_train_pred = north_atlantic_oscillation_station(train_pred_xr).values
-    NAO_val_pred = north_atlantic_oscillation_station(val_pred_xr).values
-    NAO_train_target = north_atlantic_oscillation_station(train_target_xr).values
-    NAO_val_target = north_atlantic_oscillation_station(val_target_xr).values
-
-    NP_train_pred = north_pacific(train_pred_xr).values
-    NP_val_pred = north_pacific(val_pred_xr).values
-    NP_train_target = north_pacific(train_target_xr).values
-    NP_val_target = north_pacific(val_target_xr).values
+    AMO_train_pred = atlantic_multidecadal_oscillation(train_pred_xr).values
+    AMO_val_pred = atlantic_multidecadal_oscillation(val_pred_xr).values
+    AMO_train_target = atlantic_multidecadal_oscillation(train_target_xr).values
+    AMO_val_target = atlantic_multidecadal_oscillation(val_target_xr).values
   
     # Store indices:
-    SAM_train_pred_all[i] = SAM_train_pred
-    SAM_val_pred_all[i] = SAM_val_pred
-    SAM_train_target_all[i] = SAM_train_target
-    SAM_val_target_all[i] = SAM_val_target
+    ENSO_train_pred_all[i] = ENSO_train_pred
+    ENSO_val_pred_all[i] = ENSO_val_pred
+    ENSO_train_target_all[i] = ENSO_train_target
+    ENSO_val_target_all[i] = ENSO_val_target
 
-    NAO_train_pred_all[i] = NAO_train_pred
-    NAO_val_pred_all[i] = NAO_val_pred
-    NAO_train_target_all[i] = NAO_train_target
-    NAO_val_target_all[i] = NAO_val_target
+    AMO_train_pred_all[i] = AMO_train_pred
+    AMO_val_pred_all[i] = AMO_val_pred
+    AMO_train_target_all[i] = AMO_train_target
+    AMO_val_target_all[i] = AMO_val_target
 
-    NP_train_pred_all[i] = NP_train_pred
-    NP_val_pred_all[i] = NP_val_pred
-    NP_train_target_all[i] = NP_train_target
-    NP_val_target_all[i] = NP_val_target
-    
+
 ## Store results:
 np.save(Path(path_to_final_model) / 'train_loss_per_sample_all.npy', train_loss_per_sample_all)
 np.save(Path(path_to_final_model) / 'val_loss_per_sample_all.npy', val_loss_per_sample_all)
 np.save(Path(path_to_final_model) / 'train_loss_map_all.npy', train_loss_map_all)
 np.save(Path(path_to_final_model) / 'val_loss_map_all.npy', val_loss_map_all)
-np.save(Path(path_to_final_model) / 'SAM_train_pred_all.npy', SAM_train_pred_all)
-np.save(Path(path_to_final_model) / 'SAM_val_pred_all.npy', SAM_val_pred_all)
-np.save(Path(path_to_final_model) / 'SAM_train_target_all.npy', SAM_train_target_all)
-np.save(Path(path_to_final_model) / 'SAM_val_target_all.npy', SAM_val_target_all)
-np.save(Path(path_to_final_model) / 'NAO_train_pred_all.npy', NAO_train_pred_all)
-np.save(Path(path_to_final_model) / 'NAO_val_pred_all.npy', NAO_val_pred_all)
-np.save(Path(path_to_final_model) / 'NAO_train_target_all.npy', NAO_train_target_all)
-np.save(Path(path_to_final_model) / 'NAO_val_target_all.npy', NAO_val_target_all)
-np.save(Path(path_to_final_model) / 'NP_train_pred_all.npy', NP_train_pred_all)
-np.save(Path(path_to_final_model) / 'NP_val_pred_all.npy', NP_val_pred_all)
-np.save(Path(path_to_final_model) / 'NP_train_target_all.npy', NP_train_target_all)
-np.save(Path(path_to_final_model) / 'NP_val_target_all.npy', NP_val_target_all)
+np.save(Path(path_to_final_model) / 'ENSO_train_pred_all.npy', ENSO_train_pred_all)
+np.save(Path(path_to_final_model) / 'ENSO_val_pred_all.npy', ENSO_val_pred_all)
+np.save(Path(path_to_final_model) / 'ENSO_train_target_all.npy', ENSO_train_target_all)
+np.save(Path(path_to_final_model) / 'ENSO_val_target_all.npy', ENSO_val_target_all)
+np.save(Path(path_to_final_model) / 'AMO_train_pred_all.npy', AMO_train_pred_all)
+np.save(Path(path_to_final_model) / 'AMO_val_pred_all.npy', AMO_val_pred_all)
+np.save(Path(path_to_final_model) / 'AMO_train_target_all.npy', AMO_train_target_all)
+np.save(Path(path_to_final_model) / 'AMO_val_target_all.npy', AMO_val_target_all)

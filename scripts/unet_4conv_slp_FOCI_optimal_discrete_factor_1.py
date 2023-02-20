@@ -36,8 +36,8 @@ from models import build_unet_4conv
 ## Set paths to optimal missing masks as strings:
 paths_to_missing_masks_string = [
     'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_range_50_999_factor_3_final/relevance_1',
-#     'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_range_50_999_factor_3_final/relevance_2',
-#     'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_range_50_999_factor_3_final/relevance_3',
+    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_range_50_999_factor_3_final/relevance_2',
+    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_range_50_999_factor_3_final/relevance_3',
 ]
 
 ## Create paths to optimal missing masks as PosixPaths:
@@ -69,8 +69,8 @@ augmentation_factor = (
 train_val_split = 0.8  # Set rel. amount of samples used for training.
 missing_values = [
     0.999,
-#     0.99,
-#     0.95,
+    0.99,
+    0.95,
 ]  # Set array for desired amounts of missing values: 0.9 means, that 90% of the values are missing.
 # Or set a range by only giving minimum and maximum allowed relative amounts of missing values,
 # e.g. [0.75, 0.95], according to missing_type 'discrete' or 'range', respectively.
@@ -158,12 +158,12 @@ for i in range(len(missing_values)):
     # Reload optimal mask for missing values.
     # Rel. amount of missing values = 0.999 requires special treatment:
     if missing==0.999:
-        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*1000))+"_weighted_kmeans.npy"
+        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*1000))+"_flipped.npy"
         missing_mask = np.load(
             paths_to_missing_masks[i] / filename_missing_mask
         )
     else:
-        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*100))+"_weighted_kmeans.npy"
+        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*100))+"_flipped.npy"
         missing_mask = np.load(
             paths_to_missing_masks[i] / filename_missing_mask
         )
