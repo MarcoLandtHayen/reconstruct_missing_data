@@ -68,7 +68,7 @@ augmentation_factor = 3
 run = '_final'
 
 # Get path to model:
-path_to_model = Path('GitGeomar/marco-landt-hayen/reconstruct_missing_data/results/'+model_config+'_'+feature_short+'_'+source+'_'
+path_to_model = Path('GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/'+model_config+'_'+feature_short+'_'+source+'_'
                       +mask_type+'_'+missing_type+'_factor_'+str(augmentation_factor)+run)
 
 # Reload parameters for this experiment:
@@ -104,56 +104,81 @@ model = tf.keras.models.load_model(path_to_model / 'missing_50_999' / 'model')
 # max_acc_rel_loss_reduction = 1.0    
 
 
-################ relevance_2
+# ################ relevance_2
+# # Specify name of experiment, to store results accordingly in a separate folder:
+# exp_name = '/relevance_2'
+
+# # Set sample number to start from:
+# start_sample = 60
+
+# # Define number of validation samples to consider:
+# n_samples = 2
+
+# # Define patch size:
+# patch_size = 1
+
+# ## Optionally define stopping criteria:
+
+# # Specify maximum number of patches to include (or set -1, to include ALL patches):
+# max_patch_num = 138
+
+# # Specify threshold for maximum accumulated rel. loss reduction (or set 1.0, for NO threshold):
+# max_acc_rel_loss_reduction = 1.0    
+
+# ################ relevance_3
+# # Specify name of experiment, to store results accordingly in a separate folder:
+# exp_name = '/relevance_3'
+
+# # Set sample number to start from:
+# start_sample = 9589
+
+# # Define number of validation samples to consider:
+# n_samples = 1
+
+# # Define patch size:
+# patch_size = 1
+
+# ## Optionally define stopping criteria:
+
+# # Specify maximum number of patches to include (or set -1, to include ALL patches):
+# max_patch_num = 691
+
+# # Specify threshold for maximum accumulated rel. loss reduction (or set 1.0, for NO threshold):
+# max_acc_rel_loss_reduction = 1.0    
+
+################ relevance_4_5_6_7_8
 # Specify name of experiment, to store results accordingly in a separate folder:
-exp_name = '/relevance_2'
+exp_name = '/relevance_8'
 
 # Set sample number to start from:
-start_sample = 60
+start_sample = 0
 
 # Define number of validation samples to consider:
-n_samples = 2
+n_samples = 24
 
 # Define patch size:
-patch_size = 1
+patch_size = 3
 
 ## Optionally define stopping criteria:
 
 # Specify maximum number of patches to include (or set -1, to include ALL patches):
-max_patch_num = 138
-
-# Specify threshold for maximum accumulated rel. loss reduction (or set 1.0, for NO threshold):
-max_acc_rel_loss_reduction = 1.0    
-
-################ relevance_3
-# Specify name of experiment, to store results accordingly in a separate folder:
-exp_name = '/relevance_3'
-
-# Set sample number to start from:
-start_sample = 9589
-
-# Define number of validation samples to consider:
-n_samples = 1
-
-# Define patch size:
-patch_size = 1
-
-## Optionally define stopping criteria:
-
-# Specify maximum number of patches to include (or set -1, to include ALL patches):
-max_patch_num = 691
+max_patch_num = -1
 
 # Specify threshold for maximum accumulated rel. loss reduction (or set 1.0, for NO threshold):
 max_acc_rel_loss_reduction = 1.0    
 
 #################
 
+
+
+
+
 # Get path to store results to:
-path_to_store_results = Path('GitGeomar/marco-landt-hayen/reconstruct_missing_data/results/'+model_config+'_'+feature_short+'_'+source+'_'
+path_to_store_results = Path('GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/'+model_config+'_'+feature_short+'_'+source+'_'
                       +mask_type+'_'+missing_type+'_factor_'+str(augmentation_factor)+run+exp_name)
 
 # Try to create folder for later saving results, avoid overwriting existing results:
-#os.makedirs(path_to_store_results, exist_ok=False)
+os.makedirs(path_to_store_results, exist_ok=False)
 
 # Store parameters as json:
 parameters = {
@@ -174,7 +199,7 @@ parameters = {
     "max_acc_rel_loss_reduction": max_acc_rel_loss_reduction,
 }
 
-with open(path_to_store_results / "parameters_.json", "w") as f:
+with open(path_to_store_results / "parameters.json", "w") as f:
     dump(parameters, f)
     
 #################
