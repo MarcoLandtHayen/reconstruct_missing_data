@@ -41,7 +41,7 @@ train_val_split = 0.8  # Set rel. amount of samples used for training.
 scale_to = "zero_one"  # Choose to scale inputs to [-1,1] ('one_one') or [0,1] ('zero_one') or 'norm' to normalize inputs or 'no' scaling.
 
 # Set run name:
-run = 'run_7' 
+run = 'run_4' 
 
 # Specify time steps, lat and lon dimensions:
 n_time = 900
@@ -52,12 +52,12 @@ n_lon = 144
 max_eofs = 900
 
 # Specify number of iterations, individually for each rate of missing values:
-n_iters = [5]#[200,100,30,20,10]
+n_iters = [50]#[200,100,30,20,10]
 
 # Set further parameters:
 seed = 1  # Seed for random number generator, for reproducibility of missing value mask.
 seed_reserved = 4 # Additional seed to create independent mask of reserved grid points.
-missing_values = [0.5]#[0.99,0.95,0.9,0.75,0.5] # Set rates of missing values.
+missing_values = [0.95]#[0.99,0.95,0.9,0.75,0.5] # Set rates of missing values.
 reserved = 0.1 # Set rate of valid values reserved for cross-validation.
 
 # Get path to store results to:
@@ -240,8 +240,21 @@ for i in range(len(missing_values)):
         reserved_loss_all[i,n_eof-1,:n_iter] = np.array(reserved_loss)
         missing_loss_all[i,n_eof-1,:n_iter] = np.array(missing_loss)
         
+        # Set filename to store snapshot of results every 100 eofs:
+        if (n_eof)%100 == 0:
+            total_loss_filename = 'total_loss_'+str(n_eof)+'_eofs.npy'
+            reserved_loss_filename = 'reserved_loss_'+str(n_eof)+'_eofs.npy'
+            missing_loss_filename = 'missing_loss_'+str(n_eof)+'_eofs.npy'
+            np.save(path_to_store_results / total_loss_filename, np.array(total_loss))
+            np.save(path_to_store_results / reserved_loss_filename, np.array(reserved_loss))
+            np.save(path_to_store_results / missing_loss_filename, np.array(missing_loss))
+        
     # Save (interim) results after each rate of missing values:
     np.save(path_to_store_results / 'total_loss_all.npy', total_loss_all)
     np.save(path_to_store_results / 'reserved_loss_all.npy', reserved_loss_all)
     np.save(path_to_store_results / 'missing_loss_all.npy', missing_loss_all)
+    
+    
+    
+
         
