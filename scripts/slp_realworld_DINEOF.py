@@ -41,7 +41,7 @@ train_val_split = 0.8  # Set rel. amount of samples used for training.
 scale_to = "zero_one"  # Choose to scale inputs to [-1,1] ('one_one') or [0,1] ('zero_one') or 'norm' to normalize inputs or 'no' scaling.
 
 # Set run name:
-run = 'run_4' 
+run = 'run_6' 
 
 # Specify time steps, lat and lon dimensions:
 n_time = 900
@@ -49,15 +49,15 @@ n_lat = -1 # -1 for full data, when working with real world slp fields
 n_lon = 144
 
 # Specify max. number of EOFs to consider for reconstruction:
-max_eofs = 900
+max_eofs = 15
 
 # Specify number of iterations, individually for each rate of missing values:
-n_iters = [50]#[200,100,30,20,10]
+n_iters = [300]#[200,100,30,20,10]
 
 # Set further parameters:
 seed = 1  # Seed for random number generator, for reproducibility of missing value mask.
 seed_reserved = 4 # Additional seed to create independent mask of reserved grid points.
-missing_values = [0.95]#[0.99,0.95,0.9,0.75,0.5] # Set rates of missing values.
+missing_values = [0.999]#[0.99,0.95,0.9,0.75,0.5] # Set rates of missing values.
 reserved = 0.1 # Set rate of valid values reserved for cross-validation.
 
 # Get path to store results to:
