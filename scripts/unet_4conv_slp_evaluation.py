@@ -60,7 +60,7 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_discrete_factor_1_final'
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_discrete_factor_2_final'
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_discrete_factor_3_final'
-path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_optimal_discrete_factor_1_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_optimal_discrete_factor_1_final'
 
 # slp realworld:
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_realworld_fixed_discrete_factor_1_final'
@@ -68,7 +68,7 @@ path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_result
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_realworld_variable_discrete_factor_2_final'
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_realworld_variable_discrete_factor_3_final'
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_realworld_optimal_from_CESM_discrete_factor_1_final'
-#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_realworld_optimal_from_FOCI_discrete_factor_1_final'
+path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_realworld_optimal_from_FOCI_discrete_factor_1_final'
 
 
 
@@ -276,21 +276,33 @@ for i in range(len(missing_values)):
         coords={'time': extended_time[n_train:], 'lat': latitude, 'lon': longitude}
     )   
     
+    # Revert scaling:
+    train_pred_xr_rescaled = train_pred_xr * (train_max - train_min) + train_min
+    val_pred_xr_rescaled = val_pred_xr * (train_max - train_min) + train_min
+    train_target_xr_rescaled = train_target_xr * (train_max - train_min) + train_min
+    val_target_xr_rescaled = val_target_xr * (train_max - train_min) + train_min
+
+    # Add climatology, to restore raw fields:
+    train_pred_xr_rescaled_fields = train_pred_xr_rescaled.groupby("time.month") + slp_climatology_fields[:,:-1,:]
+    val_pred_xr_rescaled_fields = val_pred_xr_rescaled.groupby("time.month") + slp_climatology_fields[:,:-1,:]
+    train_target_xr_rescaled_fields = train_target_xr_rescaled.groupby("time.month") + slp_climatology_fields[:,:-1,:]
+    val_target_xr_rescaled_fields = val_target_xr_rescaled.groupby("time.month") + slp_climatology_fields[:,:-1,:]
+
     # Compute indices:
-    SAM_train_pred = southern_annular_mode_zonal_mean(train_pred_xr).values
-    SAM_val_pred = southern_annular_mode_zonal_mean(val_pred_xr).values
-    SAM_train_target = southern_annular_mode_zonal_mean(train_target_xr).values
-    SAM_val_target = southern_annular_mode_zonal_mean(val_target_xr).values
+    SAM_train_pred = southern_annular_mode_zonal_mean(train_pred_xr_rescaled_fields).values
+    SAM_val_pred = southern_annular_mode_zonal_mean(val_pred_xr_rescaled_fields).values
+    SAM_train_target = southern_annular_mode_zonal_mean(train_target_xr_rescaled_fields).values
+    SAM_val_target = southern_annular_mode_zonal_mean(val_target_xr_rescaled_fields).values
+    
+    NAO_train_pred = north_atlantic_oscillation_station(train_pred_xr_rescaled_fields).values
+    NAO_val_pred = north_atlantic_oscillation_station(val_pred_xr_rescaled_fields).values
+    NAO_train_target = north_atlantic_oscillation_station(train_target_xr_rescaled_fields).values
+    NAO_val_target = north_atlantic_oscillation_station(val_target_xr_rescaled_fields).values
 
-    NAO_train_pred = north_atlantic_oscillation_station(train_pred_xr).values
-    NAO_val_pred = north_atlantic_oscillation_station(val_pred_xr).values
-    NAO_train_target = north_atlantic_oscillation_station(train_target_xr).values
-    NAO_val_target = north_atlantic_oscillation_station(val_target_xr).values
-
-    NP_train_pred = north_pacific(train_pred_xr).values
-    NP_val_pred = north_pacific(val_pred_xr).values
-    NP_train_target = north_pacific(train_target_xr).values
-    NP_val_target = north_pacific(val_target_xr).values
+    NP_train_pred = north_pacific(train_pred_xr_rescaled_fields).values
+    NP_val_pred = north_pacific(val_pred_xr_rescaled_fields).values
+    NP_train_target = north_pacific(train_target_xr_rescaled_fields).values
+    NP_val_target = north_pacific(val_target_xr_rescaled_fields).values
   
     # Store indices:
     SAM_train_pred_all[i] = SAM_train_pred
