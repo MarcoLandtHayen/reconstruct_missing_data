@@ -185,12 +185,12 @@ for i in range(len(missing_values)):
     # Reload optimal mask for missing values.
     # Rel. amount of missing values = 0.999 requires special treatment:
     if missing==0.999:
-        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*1000))+"_realworld_truncated.npy"
+        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*1000))+"_realworld.npy"
         missing_mask = np.load(
             paths_to_missing_masks[i] / filename_missing_mask
         )
     else:
-        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*100))+"_realworld_truncated.npy"
+        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*100))+"_realworld.npy"
         missing_mask = np.load(
             paths_to_missing_masks[i] / filename_missing_mask
         )
