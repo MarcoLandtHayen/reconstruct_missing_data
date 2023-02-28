@@ -351,29 +351,30 @@ def split_and_scale_data(data, missing_mask, train_val_split, scale_to):
     # Look for NaN values:
     invalid_gridpoints = np.isnan(data)
 
-    # Set NaN values to zero:
-    data[invalid_gridpoints] = 0
+    # Copy data, to keep original NaN values. Then set NaN values to zero:
+    data_nan_to_zero = np.copy(data)
+    data_nan_to_zero[invalid_gridpoints] = 0
 
     # Remenber min/max used for scaling.
-    train_min = np.min(data[:n_train])
-    train_max = np.max(data[:n_train])
+    train_min = np.min(data_nan_to_zero[:n_train])
+    train_max = np.max(data_nan_to_zero[:n_train])
 
     # Remenber mean and std dev used for scaling.
-    train_mean = np.mean(data[:n_train])
-    train_std = np.std(data[:n_train])
+    train_mean = np.mean(data_nan_to_zero[:n_train])
+    train_std = np.std(data_nan_to_zero[:n_train])
 
     # Scale or normalize inputs depending on desired scaling parameter:
     if scale_to == "one_one":
         # Scale inputs to [-1,1]:
-        data_scaled = 2 * (data - train_min) / (train_max - train_min) - 1
+        data_scaled = 2 * (data_nan_to_zero - train_min) / (train_max - train_min) - 1
 
     elif scale_to == "zero_one":
         # Alternatively scale inputs to [0,1]
-        data_scaled = (data - train_min) / (train_max - train_min)
+        data_scaled = (data_nan_to_zero - train_min) / (train_max - train_min)
 
     elif scale_to == "norm":
         # Alternatively scale inputs to [0,1]
-        data_scaled = (data - train_mean) / train_std
+        data_scaled = (data_nan_to_zero - train_mean) / train_std
 
     # Get sparse data by applying given mask for missing values to scaled/normalized data:
     data_sparse_scaled = data_scaled * missing_mask
