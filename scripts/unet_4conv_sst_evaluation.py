@@ -62,7 +62,7 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_variable_discrete_factor_1_final'
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_variable_discrete_factor_2_final'
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_variable_discrete_factor_3_final'
-path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_optimal_discrete_factor_1_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_optimal_discrete_factor_1_final'
 
 # sst realworld:
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_realworld_fixed_discrete_factor_1_final'
@@ -152,12 +152,14 @@ else:
     n_train = int(len(data[feature]) * augmentation_factor * train_val_split)
     n_val = ((len(data[feature]) * augmentation_factor) - n_train)
 
-    # Select single feature and compute anomalies, using whole time span as climatology:
-    data = get_anomalies(feature=feature, data_set=data)
+    # Compute monthly climatology over complete time span for whole world:
+    sst_climatology_fields = data[feature].groupby("time.month").mean("time")
+    
+    # Get slp anomaly fields by subtracting monthly climatology from raw slp fields:
+    sst_anomaly_fields = data[feature].groupby("time.month") - sst_climatology_fields
 
     # Extend data, if desired:
-    data = clone_data(data=data, augmentation_factor=augmentation_factor)
-
+    data = clone_data(data=sst_anomaly_fields, augmentation_factor=augmentation_factor)
 
 # Extend time dimension, according to augmentation factor:
 for t in range(len(time)):
@@ -275,16 +277,28 @@ for i in range(len(missing_values)):
         coords={'time': extended_time[n_train:], 'lat': latitude, 'lon': longitude}
     )   
     
-    # Compute indices:
-    ENSO_train_pred = el_nino_southern_oscillation_34(train_pred_xr).values
-    ENSO_val_pred = el_nino_southern_oscillation_34(val_pred_xr).values
-    ENSO_train_target = el_nino_southern_oscillation_34(train_target_xr).values
-    ENSO_val_target = el_nino_southern_oscillation_34(val_target_xr).values
+    # Revert scaling:
+    train_pred_xr_rescaled = train_pred_xr * (train_max - train_min) + train_min
+    val_pred_xr_rescaled = val_pred_xr * (train_max - train_min) + train_min
+    train_target_xr_rescaled = train_target_xr * (train_max - train_min) + train_min
+    val_target_xr_rescaled = val_target_xr * (train_max - train_min) + train_min
 
-    AMO_train_pred = atlantic_multidecadal_oscillation(train_pred_xr).values
-    AMO_val_pred = atlantic_multidecadal_oscillation(val_pred_xr).values
-    AMO_train_target = atlantic_multidecadal_oscillation(train_target_xr).values
-    AMO_val_target = atlantic_multidecadal_oscillation(val_target_xr).values
+    # Add climatology, to restore raw fields:
+    train_pred_xr_rescaled_fields = train_pred_xr_rescaled.groupby("time.month") + slp_climatology_fields[:,:-1,:]
+    val_pred_xr_rescaled_fields = val_pred_xr_rescaled.groupby("time.month") + slp_climatology_fields[:,:-1,:]
+    train_target_xr_rescaled_fields = train_target_xr_rescaled.groupby("time.month") + slp_climatology_fields[:,:-1,:]
+    val_target_xr_rescaled_fields = val_target_xr_rescaled.groupby("time.month") + slp_climatology_fields[:,:-1,:]
+        
+    # Compute indices:
+    ENSO_train_pred = el_nino_southern_oscillation_34(train_pred_xr_rescaled_fields).values
+    ENSO_val_pred = el_nino_southern_oscillation_34(val_pred_xr_rescaled_fields).values
+    ENSO_train_target = el_nino_southern_oscillation_34(train_target_xr_rescaled_fields).values
+    ENSO_val_target = el_nino_southern_oscillation_34(val_target_xr_rescaled_fields).values
+
+    AMO_train_pred = atlantic_multidecadal_oscillation(train_pred_xr_rescaled_fields).values
+    AMO_val_pred = atlantic_multidecadal_oscillation(val_pred_xr_rescaled_fields).values
+    AMO_train_target = atlantic_multidecadal_oscillation(train_target_xr_rescaled_fields).values
+    AMO_val_target = atlantic_multidecadal_oscillation(val_target_xr_rescaled_fields).values
   
     # Store indices:
     ENSO_train_pred_all[i] = ENSO_train_pred

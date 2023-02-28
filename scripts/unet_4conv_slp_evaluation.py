@@ -60,7 +60,7 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_discrete_factor_1_final'
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_discrete_factor_2_final'
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_discrete_factor_3_final'
-#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_optimal_discrete_factor_1_final'
+path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_optimal_discrete_factor_1_final'
 
 # slp realworld:
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_realworld_fixed_discrete_factor_1_final'
@@ -68,7 +68,7 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_realworld_variable_discrete_factor_2_final'
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_realworld_variable_discrete_factor_3_final'
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_realworld_optimal_from_CESM_discrete_factor_1_final'
-path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_realworld_optimal_from_FOCI_discrete_factor_1_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_realworld_optimal_from_FOCI_discrete_factor_1_final'
 
 
 
@@ -148,12 +148,14 @@ else:
     n_train = int(len(data[feature]) * augmentation_factor * train_val_split)
     n_val = ((len(data[feature]) * augmentation_factor) - n_train)
 
-    # Select single feature and compute anomalies, using whole time span as climatology:
-    data = get_anomalies(feature=feature, data_set=data)
+    # Compute monthly climatology over complete time span for whole world:
+    slp_climatology_fields = data[feature].groupby("time.month").mean("time")
+    
+    # Get slp anomaly fields by subtracting monthly climatology from raw slp fields:
+    slp_anomaly_fields = data[feature].groupby("time.month") - slp_climatology_fields
 
     # Extend data, if desired:
-    data = clone_data(data=data, augmentation_factor=augmentation_factor)
-
+    data = clone_data(data=slp_anomaly_fields, augmentation_factor=augmentation_factor)
     
 # Extend time dimension, according to augmentation factor:
 for t in range(len(time)):
