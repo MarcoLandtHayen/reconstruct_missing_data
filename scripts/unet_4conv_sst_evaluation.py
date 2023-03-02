@@ -58,21 +58,19 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_CESM_optimal_discrete_factor_1_final'
 
 # sst FOCI:
-#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_fixed_discrete_factor_1_final'
+path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_fixed_discrete_factor_1_final'
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_variable_discrete_factor_1_final'
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_variable_discrete_factor_2_final'
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_variable_discrete_factor_3_final'
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_optimal_discrete_factor_1_final'
 
 # sst realworld:
-#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_realworld_fixed_discrete_factor_1_final'
-#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_realworld_variable_discrete_factor_1_final'
-#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_realworld_variable_discrete_factor_2_final'
-#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_realworld_variable_discrete_factor_3_final'
-#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_realworld_optimal_from_CESM_discrete_factor_1_final'
-#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_realworld_optimal_from_FOCI_discrete_factor_1_final'
-
-
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_5conv_sst_realworld_fixed_discrete_factor_1_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_5conv_sst_realworld_variable_discrete_factor_1_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_5conv_sst_realworld_variable_discrete_factor_2_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_5conv_sst_realworld_variable_discrete_factor_3_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_5conv_sst_realworld_optimal_from_CESM_discrete_factor_1_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_5conv_sst_realworld_optimal_from_FOCI_discrete_factor_1_final'
 
 
 # Reload parameters for this experiment:
@@ -109,7 +107,7 @@ if source == 'realworld':
     # Extract time, latitude and longitude dimensions.
     # Already consider, that latitude and longitude are truncated below:
     time = sst_fields['time']
-    latitude = sst_fields['lat'][:-1]
+    latitude = sst_fields['lat'][5:-4]
     longitude = sst_fields['lon'][:-4]
     
     # Get number of train and validation samples: Consider augmentation factor!
@@ -130,7 +128,7 @@ if source == 'realworld':
     # Remove last row (latidute) and last 4 columns (longitude), to have even number of steps in latitude (=88)
     # and longitude (=176), that can be evenly divided 4 times by two. This serves as 'quick-and-dirty'
     # solution to avoid problems with UPSAMPLING in U-Net. There must be a more elegant way, take care of it later!
-    sst_anomaly_fields = sst_anomaly_fields.values[:,:-1,:-4]
+    sst_anomaly_fields = sst_anomaly_fields.values[:,5:-4,:-4]
    
     # Extend data, if desired:
     data = clone_data(data=sst_anomaly_fields, augmentation_factor=augmentation_factor)
@@ -181,24 +179,29 @@ extended_time_xr = xr.DataArray(
     coords={'time': extended_time}
 )
 
+# To reduce memory load, consider each sample only once. Use augmentation factor as step size.
+# Hence, adjust number of training and validation samples accordingly:
+n_train_red = len(np.arange(0,n_train,augmentation_factor))
+n_val_red = len(np.arange(0,n_val,augmentation_factor))
+
 # Initialize storage for loss per sample, dimension: (#missing values, #samples)
-train_loss_per_sample_all = np.zeros((len(missing_values),n_train))
-val_loss_per_sample_all = np.zeros((len(missing_values),n_val))
+train_loss_per_sample_all = np.zeros((len(missing_values),n_train_red))
+val_loss_per_sample_all = np.zeros((len(missing_values),n_val_red))
 
 # Initialize storage for mean loss maps, dimension: (#missing values, latitude, longitude)
 train_loss_map_all = np.zeros((len(missing_values),data.shape[1],data.shape[2]))
 val_loss_map_all = np.zeros((len(missing_values),data.shape[1],data.shape[2]))
 
 # Initialize storage for indices, dimension: (#missing values, #samples)
-ENSO_train_pred_all = np.zeros((len(missing_values),n_train))
-ENSO_val_pred_all = np.zeros((len(missing_values),n_val))
-ENSO_train_target_all = np.zeros((len(missing_values),n_train))
-ENSO_val_target_all = np.zeros((len(missing_values),n_val))
+ENSO_train_pred_all = np.zeros((len(missing_values),n_train_red))
+ENSO_val_pred_all = np.zeros((len(missing_values),n_val_red))
+ENSO_train_target_all = np.zeros((len(missing_values),n_train_red))
+ENSO_val_target_all = np.zeros((len(missing_values),n_val_red))
 
-AMO_train_pred_all = np.zeros((len(missing_values),n_train))
-AMO_val_pred_all = np.zeros((len(missing_values),n_val))
-AMO_train_target_all = np.zeros((len(missing_values),n_train))
-AMO_val_target_all = np.zeros((len(missing_values),n_val))
+AMO_train_pred_all = np.zeros((len(missing_values),n_train_red))
+AMO_val_pred_all = np.zeros((len(missing_values),n_val_red))
+AMO_train_target_all = np.zeros((len(missing_values),n_train_red))
+AMO_val_target_all = np.zeros((len(missing_values),n_val_red))
 
 # Loop over rel. amounts of missing values:
 for i in range(len(missing_values)):
@@ -226,6 +229,12 @@ for i in range(len(missing_values)):
         train_val_split, 
         scale_to
     )
+    
+    # Reduce inputs and targets, use each sample only once. Augmentation factor determines step size:
+    train_input = train_input[np.arange(0,n_train,augmentation_factor)]
+    val_input = val_input[np.arange(0,n_val,augmentation_factor)]
+    train_target = train_target[np.arange(0,n_train,augmentation_factor)]
+    val_target = val_target[np.arange(0,n_val,augmentation_factor)]
     
     # Reload model: Rel. amount of missing values = 0.999 requires special treatment.
     if missing==0.999:
@@ -259,22 +268,26 @@ for i in range(len(missing_values)):
     train_pred_xr = xr.DataArray(
         train_pred[:,:,:,0],
         dims=('time', 'lat', 'lon'),
-        coords={'time': extended_time[:n_train], 'lat': latitude, 'lon': longitude}
+        coords={'time': extended_time[:n_train][np.arange(0,n_train,augmentation_factor)],
+                'lat': latitude, 'lon': longitude}
     )
     val_pred_xr = xr.DataArray(
         val_pred[:,:,:,0],
         dims=('time', 'lat', 'lon'),
-        coords={'time': extended_time[n_train:], 'lat': latitude, 'lon': longitude}
+        coords={'time': extended_time[n_train:][np.arange(0,n_val,augmentation_factor)], 
+                'lat': latitude, 'lon': longitude}
     )
     train_target_xr = xr.DataArray(
         train_target[:,:,:],
         dims=('time', 'lat', 'lon'),
-        coords={'time': extended_time[:n_train], 'lat': latitude, 'lon': longitude}
+        coords={'time': extended_time[:n_train][np.arange(0,n_train,augmentation_factor)],
+                'lat': latitude, 'lon': longitude}
     )
     val_target_xr = xr.DataArray(
         val_target[:,:,:],
         dims=('time', 'lat', 'lon'),
-        coords={'time': extended_time[n_train:], 'lat': latitude, 'lon': longitude}
+        coords={'time': extended_time[n_train:][np.arange(0,n_val,augmentation_factor)],
+                'lat': latitude, 'lon': longitude}
     )   
     
     # Revert scaling:
@@ -284,10 +297,10 @@ for i in range(len(missing_values)):
     val_target_xr_rescaled = val_target_xr * (train_max - train_min) + train_min
 
     # Add climatology, to restore raw fields:
-    train_pred_xr_rescaled_fields = train_pred_xr_rescaled.groupby("time.month") + slp_climatology_fields[:,:-1,:]
-    val_pred_xr_rescaled_fields = val_pred_xr_rescaled.groupby("time.month") + slp_climatology_fields[:,:-1,:]
-    train_target_xr_rescaled_fields = train_target_xr_rescaled.groupby("time.month") + slp_climatology_fields[:,:-1,:]
-    val_target_xr_rescaled_fields = val_target_xr_rescaled.groupby("time.month") + slp_climatology_fields[:,:-1,:]
+    train_pred_xr_rescaled_fields = train_pred_xr_rescaled.groupby("time.month") + sst_climatology_fields[:,5:-4,:-4]
+    val_pred_xr_rescaled_fields = val_pred_xr_rescaled.groupby("time.month") + sst_climatology_fields[:,5:-4,:-4]
+    train_target_xr_rescaled_fields = train_target_xr_rescaled.groupby("time.month") + sst_climatology_fields[:,5:-4,:-4]
+    val_target_xr_rescaled_fields = val_target_xr_rescaled.groupby("time.month") + sst_climatology_fields[:,5:-4,:-4]
         
     # Compute indices:
     ENSO_train_pred = el_nino_southern_oscillation_34(train_pred_xr_rescaled_fields).values
