@@ -60,7 +60,7 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_discrete_factor_1_final'
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_discrete_factor_2_final'
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_discrete_factor_3_final'
-path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_optimal_discrete_factor_1_final'
+#path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_optimal_discrete_factor_1_final'
 
 # slp realworld:
 #path_to_final_model='GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_realworld_fixed_discrete_factor_1_final'
@@ -177,29 +177,34 @@ extended_time_xr = xr.DataArray(
     coords={'time': extended_time}
 )
 
+# To reduce memory load, consider each sample only once. Use augmentation factor as step size.
+# Hence, adjust number of training and validation samples accordingly:
+n_train_red = len(np.arange(0,n_train,augmentation_factor))
+n_val_red = len(np.arange(0,n_val,augmentation_factor))
+
 # Initialize storage for loss per sample, dimension: (#missing values, #samples)
-train_loss_per_sample_all = np.zeros((len(missing_values),n_train))
-val_loss_per_sample_all = np.zeros((len(missing_values),n_val))
+train_loss_per_sample_all = np.zeros((len(missing_values),n_train_red))
+val_loss_per_sample_all = np.zeros((len(missing_values),n_val_red))
 
 # Initialize storage for mean loss maps, dimension: (#missing values, latitude, longitude)
 train_loss_map_all = np.zeros((len(missing_values),data.shape[1],data.shape[2]))
 val_loss_map_all = np.zeros((len(missing_values),data.shape[1],data.shape[2]))
 
 # Initialize storage for indices, dimension: (#missing values, #samples)
-SAM_train_pred_all = np.zeros((len(missing_values),n_train))
-SAM_val_pred_all = np.zeros((len(missing_values),n_val))
-SAM_train_target_all = np.zeros((len(missing_values),n_train))
-SAM_val_target_all = np.zeros((len(missing_values),n_val))
+SAM_train_pred_all = np.zeros((len(missing_values),n_train_red))
+SAM_val_pred_all = np.zeros((len(missing_values),n_val_red))
+SAM_train_target_all = np.zeros((len(missing_values),n_train_red))
+SAM_val_target_all = np.zeros((len(missing_values),n_val_red))
 
-NAO_train_pred_all = np.zeros((len(missing_values),n_train))
-NAO_val_pred_all = np.zeros((len(missing_values),n_val))
-NAO_train_target_all = np.zeros((len(missing_values),n_train))
-NAO_val_target_all = np.zeros((len(missing_values),n_val))
+NAO_train_pred_all = np.zeros((len(missing_values),n_train_red))
+NAO_val_pred_all = np.zeros((len(missing_values),n_val_red))
+NAO_train_target_all = np.zeros((len(missing_values),n_train_red))
+NAO_val_target_all = np.zeros((len(missing_values),n_val_red))
 
-NP_train_pred_all = np.zeros((len(missing_values),n_train))
-NP_val_pred_all = np.zeros((len(missing_values),n_val))
-NP_train_target_all = np.zeros((len(missing_values),n_train))
-NP_val_target_all = np.zeros((len(missing_values),n_val))
+NP_train_pred_all = np.zeros((len(missing_values),n_train_red))
+NP_val_pred_all = np.zeros((len(missing_values),n_val_red))
+NP_train_target_all = np.zeros((len(missing_values),n_train_red))
+NP_val_target_all = np.zeros((len(missing_values),n_val_red))
 
 # Loop over rel. amounts of missing values:
 for i in range(len(missing_values)):
@@ -227,6 +232,12 @@ for i in range(len(missing_values)):
         train_val_split, 
         scale_to
     )
+    
+    # Reduce inputs and targets, use each sample only once. Augmentation factor determines step size:
+    train_input = train_input[np.arange(0,n_train,augmentation_factor)]
+    val_input = val_input[np.arange(0,n_val,augmentation_factor)]
+    train_target = train_target[np.arange(0,n_train,augmentation_factor)]
+    val_target = val_target[np.arange(0,n_val,augmentation_factor)]
     
     # Reload model: Rel. amount of missing values = 0.999 requires special treatment.
     if missing==0.999:
@@ -260,24 +271,28 @@ for i in range(len(missing_values)):
     train_pred_xr = xr.DataArray(
         train_pred[:,:,:,0],
         dims=('time', 'lat', 'lon'),
-        coords={'time': extended_time[:n_train], 'lat': latitude, 'lon': longitude}
+        coords={'time': extended_time[:n_train][np.arange(0,n_train,augmentation_factor)],
+                'lat': latitude, 'lon': longitude}
     )
     val_pred_xr = xr.DataArray(
         val_pred[:,:,:,0],
         dims=('time', 'lat', 'lon'),
-        coords={'time': extended_time[n_train:], 'lat': latitude, 'lon': longitude}
+        coords={'time': extended_time[n_train:][np.arange(0,n_val,augmentation_factor)], 
+                'lat': latitude, 'lon': longitude}
     )
     train_target_xr = xr.DataArray(
         train_target[:,:,:],
         dims=('time', 'lat', 'lon'),
-        coords={'time': extended_time[:n_train], 'lat': latitude, 'lon': longitude}
+        coords={'time': extended_time[:n_train][np.arange(0,n_train,augmentation_factor)],
+                'lat': latitude, 'lon': longitude}
     )
     val_target_xr = xr.DataArray(
         val_target[:,:,:],
         dims=('time', 'lat', 'lon'),
-        coords={'time': extended_time[n_train:], 'lat': latitude, 'lon': longitude}
+        coords={'time': extended_time[n_train:][np.arange(0,n_val,augmentation_factor)],
+                'lat': latitude, 'lon': longitude}
     )   
-    
+
     # Revert scaling:
     train_pred_xr_rescaled = train_pred_xr * (train_max - train_min) + train_min
     val_pred_xr_rescaled = val_pred_xr * (train_max - train_min) + train_min
