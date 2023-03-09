@@ -35,16 +35,16 @@ from models import build_unet_5conv
 
 # Set paths to optimal missing masks as strings:
 paths_to_missing_masks_string = [
-    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_CESM_variable_range_25_999_factor_3_final/relevance_1',
-    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_CESM_variable_range_25_999_factor_3_final/relevance_2',
-    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_CESM_variable_range_25_999_factor_3_final/relevance_2',
+#    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_CESM_variable_range_0_100_factor_3_final/relevance_1',
+    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_CESM_variable_range_0_100_factor_3_final/relevance_1',
+    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_CESM_variable_range_0_100_factor_3_final/relevance_1',
 ]
 
-# paths_to_missing_masks_string = [
-#     'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_variable_range_25_999_factor_3_final/relevance_1',
-#     'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_variable_range_25_999_factor_3_final/relevance_2',
-#     'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_variable_range_25_999_factor_3_final/relevance_2',
-# ]
+#paths_to_missing_masks_string = [
+#    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_variable_range_25_999_factor_3_final/relevance_2',
+#    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_variable_range_25_999_factor_3_final/relevance_2',
+#    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_sst_FOCI_variable_range_25_999_factor_3_final/relevance_2',
+#]
 
 ## Create paths to optimal missing masks as PosixPaths:
 paths_to_missing_masks = []
@@ -63,7 +63,7 @@ feature = "sea-surface-temperature"  # Choose either 'sea-level-pressure' or 'se
 feature_short = "sst"  # Free to set short name, to store results, e.g. 'slp' and 'sst'.
 source = "realworld"  # Choose Earth System Model, either 'FOCI' or 'CESM'.
 seed = 3  # Seed for random number generator, for reproducibility of missing value mask.
-run = "_seed_3_mask_v2_epochs_30" # Specify run number (or '_final'). Don't need seed, since we use optimal fixed mask.
+run = "_GMM_run_8" # Specify run number (or '_final'). Don't need seed, since we use optimal fixed mask.
 mask_source = paths_to_missing_masks_string  # Paths to experiments, that produced optimal sampling masks, as strings.
 mask_type = "optimal_from_CESM"  # Can have random missing values, individually for each data sample ('variable'),
 # or randomly create only a single mask, that is then applied to all samples identically ('fixed'),
@@ -74,7 +74,7 @@ augmentation_factor = (
 )
 train_val_split = 0.8  # Set rel. amount of samples used for training.
 missing_values = [
-    0.999,
+#     0.999,
     0.99,
     0.95,
 ]  # Set array for desired amounts of missing values: 0.9 means, that 90% of the values are missing.
@@ -184,12 +184,12 @@ for i in range(len(missing_values)):
     # Reload optimal mask for missing values.
     # Rel. amount of missing values = 0.999 requires special treatment:
     if missing==0.999:
-        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*1000))+"_realworld_unet5conv.npy"
+        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*1000))+"_realworld_noise_2.npy"
         missing_mask = np.load(
             paths_to_missing_masks[i] / filename_missing_mask
         )
     else:
-        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*100))+"_realworld_unet5conv.npy"
+        filename_missing_mask = "optimal_sampling_mask_"+str(int(missing*100))+"_realworld_noise_2.npy"
         missing_mask = np.load(
             paths_to_missing_masks[i] / filename_missing_mask
         )

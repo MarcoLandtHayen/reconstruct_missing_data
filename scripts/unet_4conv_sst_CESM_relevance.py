@@ -87,10 +87,10 @@ model = tf.keras.models.load_model(path_to_model / 'missing_0_100' / 'model')
 exp_name = '/relevance_1'
 
 # Set sample number to start from:
-start_sample = 115
+start_sample = 9588
 
 # Define number of validation samples to consider:
-n_samples = 5
+n_samples = 2
 
 # Define patch size:
 patch_size = 1

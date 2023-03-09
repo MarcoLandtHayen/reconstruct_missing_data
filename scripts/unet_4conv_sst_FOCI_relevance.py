@@ -4,7 +4,7 @@
 # Opposed to their net, only have 4 instead of 5 convolutional layers.
 # Work with sea surface temperature (sst) fields from Earth System Models, either FOCI or CESM.
 #
-# Trained model with variable mask and augmentation factor 2 on samples with rel. amount of missing values in the range of [0.75, 0.99].
+# Trained model with variable mask and augmentation factor 3 on samples with rel. amount of missing values in the range of [0,1].
 # Divide training samples into patches and successively add more patches as input.
 # Use this single model to find relevance - in terms of biggest loss reduction - in a brute-force manner.
 
@@ -63,7 +63,7 @@ feature_short = 'sst' # Free to set short name, to store results, e.g. 'slp' and
 source = 'FOCI' # Choose Earth System Model, either 'FOCI' or 'CESM'.
 
 mask_type = 'variable'
-missing_type = 'range_25_999'
+missing_type = 'range_0_100'
 augmentation_factor = 3
 run = '_final'
 
@@ -80,28 +80,28 @@ missing_values = parameters['missing_values']
 scale_to = parameters['scale_to']
 
 # Reload final model, trained on range:
-model = tf.keras.models.load_model(path_to_model / 'missing_25_999' / 'model')
+model = tf.keras.models.load_model(path_to_model / 'missing_0_100' / 'model')
 
-# ############### relevance_1
-# # Specify name of experiment, to store results accordingly in a separate folder:
-# exp_name = '/relevance_1'
+############### relevance_1
+# Specify name of experiment, to store results accordingly in a separate folder:
+exp_name = '/relevance_1'
 
-# # Set sample number to start from:
-# start_sample = 9595
+# Set sample number to start from:
+start_sample = 20
 
-# # Define number of validation samples to consider:
-# n_samples = 5
+# Define number of validation samples to consider:
+n_samples = 5
 
-# # Define patch size:
-# patch_size = 1
+# Define patch size:
+patch_size = 1
 
-# ## Optionally define stopping criteria:
+## Optionally define stopping criteria:
 
-# # Specify maximum number of patches to include (or set -1, to include ALL patches):
-# max_patch_num = 18
+# Specify maximum number of patches to include (or set -1, to include ALL patches):
+max_patch_num = 50
 
-# # Specify threshold for maximum accumulated rel. loss reduction (or set 1.0, for NO threshold):
-# max_acc_rel_loss_reduction = 1.0    
+# Specify threshold for maximum accumulated rel. loss reduction (or set 1.0, for NO threshold):
+max_acc_rel_loss_reduction = 0.9   
 
 
 # ################ relevance_2
@@ -146,26 +146,26 @@ model = tf.keras.models.load_model(path_to_model / 'missing_25_999' / 'model')
 # # Specify threshold for maximum accumulated rel. loss reduction (or set 1.0, for NO threshold):
 # max_acc_rel_loss_reduction = 1.0
 
-################ relevance_4_5_6_7_8
-# Specify name of experiment, to store results accordingly in a separate folder:
-exp_name = '/relevance_8'
+# ################ relevance_4_5_6_7_8
+# # Specify name of experiment, to store results accordingly in a separate folder:
+# exp_name = '/relevance_8'
 
-# Set sample number to start from:
-start_sample = 0
+# # Set sample number to start from:
+# start_sample = 0
 
-# Define number of validation samples to consider:
-n_samples = 24
+# # Define number of validation samples to consider:
+# n_samples = 24
 
-# Define patch size:
-patch_size = 3
+# # Define patch size:
+# patch_size = 3
 
 # # Optionally define stopping criteria:
 
-# Specify maximum number of patches to include (or set -1, to include ALL patches):
-max_patch_num = -1
+# # Specify maximum number of patches to include (or set -1, to include ALL patches):
+# max_patch_num = -1
 
-# Specify threshold for maximum accumulated rel. loss reduction (or set 1.0, for NO threshold):
-max_acc_rel_loss_reduction = 1.0
+# # Specify threshold for maximum accumulated rel. loss reduction (or set 1.0, for NO threshold):
+# max_acc_rel_loss_reduction = 1.0
 
 # # ################
 
@@ -174,7 +174,7 @@ path_to_store_results = Path('GitGeomar/marco-landt-hayen/reconstruct_missing_da
                       +mask_type+'_'+missing_type+'_factor_'+str(augmentation_factor)+run+exp_name)
 
 # Try to create folder for later saving results, avoid overwriting existing results:
-os.makedirs(path_to_store_results, exist_ok=False)
+# os.makedirs(path_to_store_results, exist_ok=False)
 
 # Store parameters as json:
 parameters = {
