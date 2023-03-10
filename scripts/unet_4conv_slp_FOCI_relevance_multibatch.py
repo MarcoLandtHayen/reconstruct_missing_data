@@ -58,7 +58,7 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 # Specify experiment:
 model_config = 'unet_4conv'
-feature = 'sea-level_pressure' # Choose either 'sea-level-pressure' or 'sea-surface-temperature' as feature.
+feature = 'sea-level-pressure' # Choose either 'sea-level-pressure' or 'sea-surface-temperature' as feature.
 feature_short = 'slp' # Free to set short name, to store results, e.g. 'slp' and 'sst'.
 source = 'FOCI' # Choose Earth System Model, either 'FOCI' or 'CESM'.
 
@@ -103,6 +103,7 @@ max_patch_num = 50
 # Specify threshold for maximum accumulated rel. loss reduction (or set 1.0, for NO threshold):
 max_acc_rel_loss_reduction = 0.9   
 
+###############
 
 # Get path to store results to:
 path_to_store_results = Path('GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/'+model_config+'_'+feature_short+'_'+source+'_'
