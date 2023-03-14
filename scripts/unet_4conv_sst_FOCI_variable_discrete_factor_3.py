@@ -58,7 +58,7 @@ missing_values = [
     0.9,
     0.75,
     0.5,
-    0.25,
+#    0.25,
 ]  # Set array for desired amounts of missing values: 0.9 means, that 90% of the values are missing.
 # Or set a range by only giving minimum and maximum allowed relative amounts of missing values,
 # e.g. [0.75, 0.95], according to missing_type 'discrete' or 'range', respectively.
@@ -67,7 +67,7 @@ scale_to = "zero_one"  # Choose to scale inputs to [-1,1] ('one_one') or [0,1] (
 # To build, compile and train model:
 CNN_filters = [64, 128, 256, 512]  # [2,4,8,16] # Number of filters.
 CNN_kernel_size = 5  # Kernel size
-learning_rate = 0.00001
+learning_rate = 0.00005
 loss_function = "mse"
 epochs = 10
 batch_size = 10
@@ -243,5 +243,6 @@ for i in range(len(missing_values)):
     else:
         np.save(path / "missing_" f"{int(missing*100)}" / "train_loss.npy", train_loss)
         np.save(path / "missing_" f"{int(missing*100)}" / "val_loss.npy", val_loss)
+
 
         
