@@ -35,9 +35,9 @@ from models import build_unet_4conv
 
 ## Set paths to optimal missing masks as strings:
 paths_to_missing_masks_string = [
-    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_range_50_999_factor_3_final/relevance_2',
-    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_range_50_999_factor_3_final/relevance_2',
-    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_range_50_999_factor_3_final/relevance_2',
+    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_range_0_100_factor_3_final/relevance_1',
+    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_range_0_100_factor_3_final/relevance_1',
+    'GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/unet_4conv_slp_FOCI_variable_range_0_100_factor_3_final/relevance_1',
 ]
 
 ## Create paths to optimal missing masks as PosixPaths:
@@ -56,8 +56,8 @@ model_config = "unet_4conv"
 feature = "sea-level-pressure"  # Choose either 'sea-level-pressure' or 'sea-surface-temperature' as feature.
 feature_short = "slp"  # Free to set short name, to store results, e.g. 'slp' and 'sst'.
 source = "FOCI"  # Choose Earth System Model, either 'FOCI' or 'CESM'.
-seed = 1  # Seed for random number generator, for reproducibility of missing value mask.
-run = "_GMM_run_1" # Specify run number (or '_final'). Don't need seed, since we use optimal fixed mask.
+seed = 5  # Seed for random number generator, for reproducibility of missing value mask.
+run = "_seed_5" # Specify run number (or '_final'). Don't need seed, since we use optimal fixed mask.
 mask_source = paths_to_missing_masks_string  # Paths to experiments, that produced optimal sampling masks, as strings.
 mask_type = "optimal"  # Can have random missing values, individually for each data sample ('variable'),
 # or randomly create only a single mask, that is then applied to all samples identically ('fixed'),
@@ -263,3 +263,5 @@ for i in range(len(missing_values)):
     
 
     
+
+
