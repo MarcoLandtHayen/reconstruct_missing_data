@@ -187,8 +187,9 @@ def mask_ocean_only_vars(data_set, get_mask_from="sea-surface-salinity"):
     return data_set
 
 
-def get_anomalies(feature, data_set):
-    """Reduce data set by selecting single feature. For this feature, compute anomalies by subtracting seasonal cycle
+def get_anomalies(feature, data_set, load_samples_from=0, load_samples_to=-1):
+    """Reduce data set by selecting single feature. Optionally select only specific range of samples.
+    For the selected feature, compute anomalies by subtracting seasonal cycle.
     Use the whole time span as climatology.
 
     Parameters
@@ -197,16 +198,24 @@ def get_anomalies(feature, data_set):
         Specify single feature to select.
     data_set: xarray.Dataset
         Contains single feature.
+    load_samples_from: int
+        Specify start sample. Default zero.
+    load_samples_to: int
+        Specify last sample to include. Default -1, to include ALL samples.
 
     Returns
     -------
     numpy.ndarray
-        Obtained anomalies for selected feature.
+        Obtained anomalies for selected feature, including desired range of samples.
 
     """
 
-    # Select single feature:
-    data = data_set[feature]
+    # Convert upper limit for samples to include: -1 means to include up to the final samples.
+    if load_samples_to == -1:
+        load_samples_to = len(data_set[feature])
+        
+    # Select single feature over the desired range of samples to include:
+    data = data_set[feature][load_samples_from:load_samples_to]
 
     # Compute anomalies, using whole time span as climatology:
     data = data.groupby("time.month") - data.groupby("time.month").mean("time")
@@ -249,7 +258,7 @@ def clone_data(data, augmentation_factor):
     return extended_data
 
 
-def create_missing_mask(data, mask_type, missing_type, missing_min, missing_max, seed):
+def create_missing_mask(data, mask_type, missing_type, missing_min, missing_max, seed, path_to_optimal_mask=''):
 
     """Create mask for missing values fitting complete data's dimensions.
     Missing values are masked as zero (zero-inflated).
@@ -261,6 +270,7 @@ def create_missing_mask(data, mask_type, missing_type, missing_min, missing_max,
     mask_type: string
         Can have random mask for missing values, individually for each data sample ('variable').
         Or create only a single random mask, that is then applied to all samples identically ('fixed').
+        Or reload a previously created (optimal) mask, that is then applied to all samples ('optimal').
     missing_type: string
         Either specify a discrete amount of missing values ('discrete') or give a range ('range').
         Giving a range only makes sense for mask_type='variable'.
@@ -271,6 +281,8 @@ def create_missing_mask(data, mask_type, missing_type, missing_min, missing_max,
         Only for mask_type='variable' with missing_type='range', set the minimum and maximum relative amount of missing values, according to desired range.
     seed: int
         Seed for random number generator, for reproducibility.
+    path_to_optimal_mask: string
+        Specify path and filename of the optimal mask to reload. Defaults to empty string.
 
     Returns
     -------
@@ -300,6 +312,17 @@ def create_missing_mask(data, mask_type, missing_type, missing_min, missing_max,
 
         missing_mask = np.repeat(missing_mask_single, data.shape[0], axis=0)
 
+    elif mask_type == "optimal":
+
+        # Reload optimal mask:
+        missing_mask = np.load(Path(path_to_optimal_mask))
+        
+        # Get single mask of missing values and repeat this mask for all samples:
+        np.random.seed(seed)
+        
+        # Expand missing mask to have sample dimension as first dimension, then repeat. Dimensions: (#samples, lat, lon).
+        missing_mask = np.repeat(np.expand_dims(missing_mask,axis=0),data.shape[0], axis=0)
+
     elif mask_type == "variable":
 
         # Initialize mask from random uniform distribution in [0,1]:
@@ -317,11 +340,12 @@ def create_missing_mask(data, mask_type, missing_type, missing_min, missing_max,
     return missing_mask
 
 
-def split_and_scale_data(data, missing_mask, train_val_split, scale_to):
+def split_and_scale_data(data, missing_mask, train_val_split, scale_to, shift=0):
 
     """Optionally scale or normalize values, according to statistics obtained from training data.
     Then apply mask for missing values and split data into training and validation sets.
-    Existing NaN values are set to zero.
+    Existing NaN values are set to zero. Optionally, shift inputs and targets, if desired, 
+    to simulate lead times for targets and time lagged inputs.
 
     Parameters
     ----------
@@ -333,7 +357,9 @@ def split_and_scale_data(data, missing_mask, train_val_split, scale_to):
         Relative amount of training data.
     scale_to: string
         Specifies the desired scaling. Choose to scale inputs to [-1,1] ('one_one') or [0,1] ('zero_one') or 'norm' to normalize inputs or 'no' scaling.
-
+    shift: integer
+        Specify number of time steps for shifting inputs and targets. Defaults to zero.
+        
     Returns
     -------
     train_input, val_input, train_target, val_target: numpy.ndarray
@@ -388,6 +414,15 @@ def split_and_scale_data(data, missing_mask, train_val_split, scale_to):
     val_input = data_sparse_scaled[n_train:]
     train_target = data_scaled[:n_train]
     val_target = data_scaled[n_train:]
+    
+    # If desired, shift inputs and targets:
+    if shift > 0:
+        
+        # Cut last <shift> inputs and first <shift> targets:
+        train_input = train_input[:-shift]
+        val_input = val_input[:-shift]
+        train_target = train_target[shift:]
+        val_target = val_target[shift:]
 
     # Add dimension for number of channels, required for Conv2D:
     train_input = np.expand_dims(train_input, axis=-1)
@@ -396,6 +431,423 @@ def split_and_scale_data(data, missing_mask, train_val_split, scale_to):
     return (
         train_input,
         val_input,
+        train_target,
+        val_target,
+        train_min,
+        train_max,
+        train_mean,
+        train_std,
+    )
+
+
+def prepare_univariate_data(
+    data_path='data/test_data/', 
+    data_source_name='FOCI',
+    feature='sea-surface-temperature', 
+    load_samples_from=0, 
+    load_samples_to=-1,
+    mask_type='fixed', 
+    missing_type='discrete', 
+    missing_min=0.0, 
+    missing_max=1.0, 
+    seed=1, 
+    path_to_optimal_mask='',
+    train_val_split=0.8,
+    scale_to='zero_one',
+    shift=0,
+):
+    
+    """
+    Load dataset.
+    Reduce data set by selecting single feature. 
+    Optionally select only specific range of samples.
+    For the selected feature, compute anomalies by subtracting seasonal cycle.
+    Use the whole time span as climatology.
+    Create mask for missing values fitting data dimensions.
+    Missing values are masked as zero (zero-inflated).
+    Optionally scale or normalize values, according to statistics obtained from training data.
+    Then apply mask for missing values and split data into training and validation sets.
+    Existing NaN values are set to zero. Optionally, shift inputs and targets, if desired, 
+    to simulate lead times for targets and time lagged inputs.
+
+    Parameters
+    ----------
+    data_path: str | path
+        Location of the data files. Default: 'data/test_data/''.
+    data_source_name: str
+        Name of the model dataset. Default: 'FOCI'.
+    feature: string
+        Specify single feature to select. Default: 'sea-surface-temperature'
+    load_samples_from: int
+        Specify start sample. Default: 0.
+    load_samples_to: int
+        Specify last sample to include. Default: -1, to include ALL samples.        
+    mask_type: string
+        Can have random mask for missing values, individually for each data sample ('variable').
+        Or create only a single random mask, that is then applied to all samples identically ('fixed').
+        Or reload a previously created (optimal) mask, that is then applied to all samples ('optimal').
+        Default: 'fixed'.
+    missing_type: string
+        Either specify a discrete amount of missing values ('discrete') or give a range ('range').
+        Giving a range only makes sense for mask_type='variable'.
+        Default: 'discrete'.
+    missing_min, missing_max: float
+        Specify the range of allowed relative amounts of missing values.
+        For mask_type='fixed', both values are set identically and give the desired amount of missing values.
+        For mask_type='variable' and missing_type='discrete', also set both values identically to give the discrete amount of missing values.
+        Only for mask_type='variable' with missing_type='range', set the minimum and maximum relative amount of missing values, according to desired range.
+        Default: 0.0 and 1.0, respectively.
+    seed: int
+        Seed for random number generator, for reproducibility. Default: 1.
+    path_to_optimal_mask: string
+        Specify path and filename of the optimal mask to reload. Default: Empty string.
+    train_val_split: float
+        Relative amount of training data. Default: 0.8.
+    scale_to: string
+        Specifies the desired scaling. Choose to scale inputs to [-1,1] ('one_one') or [0,1] ('zero_one') or 'norm' to normalize inputs or 'no' scaling.
+        Default: 'zero_one'.
+    shift: integer
+        Specify number of time steps for shifting inputs and targets. Default: 0.
+        
+    Returns
+    -------
+    train_input, val_input, train_target, val_target: numpy.ndarray
+        Data sets containing training and validation inputs and targets, respectively.
+    train_min, train_max, train_mean, train_std: float
+        Statistics obtained from training data: Minimum, maximum, mean and standard deviation, respectively.
+    """
+
+    # Load data:
+    data_set = load_data_set(data_path=data_path, data_source_name=data_source_name)
+    
+    # Get anomalies:
+    data_anomaly = get_anomalies(feature=feature, data_set=data_set, load_samples_from=load_samples_from, load_samples_to=load_samples_to)
+
+    # Create mask for missing values:
+    missing_mask = create_missing_mask(
+        data=data_anomaly,
+        mask_type=mask_type,
+        missing_type=missing_type,
+        missing_min=missing_min,
+        missing_max=missing_max,
+        seed=seed,
+        path_to_optimal_mask=path_to_optimal_mask,
+    )
+
+    # Use sparse data as inputs and complete data as targets. Split sparse and complete data into training and validation sets.
+    # Scale or normlalize data according to statistics obtained from only training data. Optionally, shift inputs and targets.
+    (
+        train_input,
+        val_input,
+        train_target,
+        val_target,
+        train_min,
+        train_max,
+        train_mean,
+        train_std,
+    ) = split_and_scale_data(data=data_anomaly, missing_mask=missing_mask, train_val_split=train_val_split, scale_to=scale_to, shift=shift)
+    
+    return (
+        train_input,
+        val_input,
+        train_target,
+        val_target,
+        train_min,
+        train_max,
+        train_mean,
+        train_std,
+    )
+
+
+def prepare_multivariate_data(
+    data_path='data/test_data/', 
+    data_source_name='FOCI',
+    input_features=['sea-level-pressure', 'sea-surface-temperature'], 
+    target_feature='sea-surface-temperature',
+    load_samples_from=0, 
+    load_samples_to=-1,
+    mask_type='fixed', 
+    missing_type='discrete', 
+    missing_min=0.0, 
+    missing_max=1.0, 
+    seed=1, 
+    path_to_optimal_masks=['',''],
+    train_val_split=0.8,
+    scale_to='zero_one',
+    shift=0,
+):
+    
+    """
+    Create multivariate inputs from multiple input features. Keep only single target channel for specific feature.
+    Repeat the following steps for each input feature individually. Eventually, stack input features.
+    Load dataset.
+    Reduce data set by selecting single feature. 
+    Optionally select only specific range of samples.
+    For the selected feature, compute anomalies by subtracting seasonal cycle.
+    Use the whole time span as climatology.
+    Create mask for missing values fitting data dimensions.
+    Missing values are masked as zero (zero-inflated).
+    Optionally scale or normalize values, according to statistics obtained from training data.
+    Then apply mask for missing values and split data into training and validation sets.
+    Existing NaN values are set to zero. Optionally, shift inputs and targets, if desired, 
+    to simulate lead times for targets and time lagged inputs.
+
+    Parameters
+    ----------
+    data_path: str | path
+        Location of the data files. Default: 'data/test_data/''.
+    data_source_name: str
+        Name of the model dataset. Default: 'FOCI'.
+    input_features: list of strings
+        Specify features to select as inputs. Default: ['sea-level-pressure',sea-surface-temperature'].
+    target_feature: string
+        Specify single target feature to keep, from list of input features. Default: 'sea-surface-temperature'.
+    load_samples_from: int
+        Specify start sample. Default: 0.
+    load_samples_to: int
+        Specify last sample to include. Default: -1, to include ALL samples.        
+    mask_type: string
+        Can have random mask for missing values, individually for each data sample ('variable').
+        Or create only a single random mask, that is then applied to all samples identically ('fixed').
+        Or reload a previously created (optimal) mask, that is then applied to all samples ('optimal').
+        Default: 'fixed'.
+    missing_type: string
+        Either specify a discrete amount of missing values ('discrete') or give a range ('range').
+        Giving a range only makes sense for mask_type='variable'.
+        Default: 'discrete'.
+    missing_min, missing_max: float
+        Specify the range of allowed relative amounts of missing values.
+        For mask_type='fixed', both values are set identically and give the desired amount of missing values.
+        For mask_type='variable' and missing_type='discrete', also set both values identically to give the discrete amount of missing values.
+        Only for mask_type='variable' with missing_type='range', set the minimum and maximum relative amount of missing values, according to desired range.
+        Default: 0.0 and 1.0, respectively.
+    seed: int
+        Seed for random number generator, for reproducibility. Default: 1.
+    path_to_optimal_masks: list of strings
+        Specify paths and filenames of the optimal masks to reload, separately for each input feature. Default: List of empty strings.
+    train_val_split: float
+        Relative amount of training data. Default: 0.8.
+    scale_to: string
+        Specifies the desired scaling. Choose to scale inputs to [-1,1] ('one_one') or [0,1] ('zero_one') or 'norm' to normalize inputs or 'no' scaling.
+        Default: 'zero_one'.
+    shift: integer
+        Specify number of time steps for shifting inputs and targets. Default: 0.
+        
+    Returns
+    -------
+    train_input, val_input, train_target, val_target: numpy.ndarray
+        Data sets containing training and validation inputs and targets, respectively.
+    train_min, train_max, train_mean, train_std: float
+        Statistics obtained from training data: Minimum, maximum, mean and standard deviation, respectively, for all input features.
+    """
+
+    # Load data:
+    data_set = load_data_set(data_path=data_path, data_source_name=data_source_name)
+    
+    # Loop over input features:
+    for i in range(len(input_features)):
+        
+        # Get current input feature:
+        feature = input_features[i]
+        
+        # Optionally get path and filename to optimal mask (only relevant for mask_type='optimal')
+        path_to_optimal_mask = path_to_optimal_masks[i]
+        
+        # Get anomalies:
+        data_anomaly = get_anomalies(feature=feature, data_set=data_set, load_samples_from=load_samples_from, load_samples_to=load_samples_to)
+
+        # Create mask for missing values:
+        missing_mask = create_missing_mask(
+            data=data_anomaly,
+            mask_type=mask_type,
+            missing_type=missing_type,
+            missing_min=missing_min,
+            missing_max=missing_max,
+            seed=seed,
+            path_to_optimal_mask=path_to_optimal_mask,
+        )
+
+        # Use sparse data as inputs and complete data as targets. Split sparse and complete data into training and validation sets.
+        # Scale or normlalize data according to statistics obtained from only training data. Optionally, shift inputs and targets.
+        (
+            train_input,
+            val_input,
+            train_target,
+            val_target,
+            train_min,
+            train_max,
+            train_mean,
+            train_std,
+        ) = split_and_scale_data(data=data_anomaly, missing_mask=missing_mask, train_val_split=train_val_split, scale_to=scale_to, shift=shift)
+        
+        ## Store inputs, targets and statistics.
+        
+        # Check, if current feature equals desired target feature:
+        if feature == target_feature:
+            train_target_final = train_target
+            val_target_final = val_target    
+        
+        # For first input feature, initialize storage for inputs and statistics:
+        if i == 0:            
+            train_input_all = np.copy(train_input)
+            val_input_all = np.copy(val_input)
+            train_min_all = [train_min]
+            train_max_all = [train_max]
+            train_mean_all = [train_mean]
+            train_std_all = [train_std]
+        
+        else:
+            train_input_all = np.concatenate([train_input_all,train_input], axis=-1)
+            val_input_all = np.concatenate([val_input_all,val_input], axis=-1)
+            train_min_all.append(train_min)
+            train_max_all.append(train_max)
+            train_mean_all.append(train_mean)
+            train_std_all.append(train_std)
+
+    return (
+        train_input_all,
+        val_input_all,
+        train_target_final,
+        val_target_final,
+        np.array(train_min_all),
+        np.array(train_max_all),
+        np.array(train_mean_all),
+        np.array(train_std_all),
+    )
+
+
+def prepare_timelagged_data(
+    data_path='data/test_data/', 
+    data_source_name='FOCI',
+    feature='sea-surface-temperature', 
+    load_samples_from=0, 
+    load_samples_to=-1,
+    mask_type='fixed', 
+    missing_type='discrete', 
+    missing_min=0.0, 
+    missing_max=1.0, 
+    seed=1, 
+    path_to_optimal_mask='',
+    train_val_split=0.8,
+    scale_to='zero_one',
+    lag=0,
+    lead=0,
+):
+    
+    """
+    Create multichannel inputs from single input features by concatenating inputs with various time lag.    
+    Keep only single target with specified lead time.
+    Repeat the following steps for the input feature with different time lag. Eventually, stack input features.
+    Load dataset.
+    Reduce data set by selecting single feature. 
+    Optionally select only specific range of samples.
+    For the selected feature, compute anomalies by subtracting seasonal cycle.
+    Use the whole time span as climatology.
+    Create mask for missing values fitting data dimensions.
+    Missing values are masked as zero (zero-inflated).
+    Optionally scale or normalize values, according to statistics obtained from training data.
+    Then apply mask for missing values and split data into training and validation sets.
+    Existing NaN values are set to zero. 
+    Shift inputs and targets according to time lag and lead time.
+
+    Parameters
+    ----------
+    data_path: str | path
+        Location of the data files. Default: 'data/test_data/''.
+    data_source_name: str
+        Name of the model dataset. Default: 'FOCI'.
+    feature: string
+        Specify single feature to select. Default: 'sea-surface-temperature'
+    load_samples_from: int
+        Specify start sample. Default: 0.
+    load_samples_to: int
+        Specify last sample to include. Default: -1, to include ALL samples.        
+    mask_type: string
+        Can have random mask for missing values, individually for each data sample ('variable').
+        Or create only a single random mask, that is then applied to all samples identically ('fixed').
+        Or reload a previously created (optimal) mask, that is then applied to all samples ('optimal').
+        Default: 'fixed'.
+    missing_type: string
+        Either specify a discrete amount of missing values ('discrete') or give a range ('range').
+        Giving a range only makes sense for mask_type='variable'.
+        Default: 'discrete'.
+    missing_min, missing_max: float
+        Specify the range of allowed relative amounts of missing values.
+        For mask_type='fixed', both values are set identically and give the desired amount of missing values.
+        For mask_type='variable' and missing_type='discrete', also set both values identically to give the discrete amount of missing values.
+        Only for mask_type='variable' with missing_type='range', set the minimum and maximum relative amount of missing values, according to desired range.
+        Default: 0.0 and 1.0, respectively.
+    seed: int
+        Seed for random number generator, for reproducibility. Default: 1.
+    path_to_optimal_mask: string
+        Specify path and filename of the optimal mask to reload. Default: Empty string.
+    train_val_split: float
+        Relative amount of training data. Default: 0.8.
+    scale_to: string
+        Specifies the desired scaling. Choose to scale inputs to [-1,1] ('one_one') or [0,1] ('zero_one') or 'norm' to normalize inputs or 'no' scaling.
+        Default: 'zero_one'.
+    lag: integer
+        Specify number of time steps to include for time lagged inputs. Default: 0.
+    lead: integer
+        Specify number of time steps as lead time for target. Default: 0.
+        
+    Returns
+    -------
+    train_input, val_input, train_target, val_target: numpy.ndarray
+        Data sets containing training and validation inputs and targets, respectively.
+    train_min, train_max, train_mean, train_std: float
+        Statistics obtained from training data: Minimum, maximum, mean and standard deviation, respectively, for all input features.
+    """
+
+    # Load data:
+    data_set = load_data_set(data_path=data_path, data_source_name=data_source_name)
+    
+    # Loop over desired time lags.
+    # Note: Even for lag=0, need at least ONE step, hence add 1:
+    for i in range(lag+1):
+        
+        # Get anomalies:
+        data_anomaly = get_anomalies(feature=feature, data_set=data_set, load_samples_from=load_samples_from, load_samples_to=load_samples_to)
+
+        # Create mask for missing values:
+        missing_mask = create_missing_mask(
+            data=data_anomaly,
+            mask_type=mask_type,
+            missing_type=missing_type,
+            missing_min=missing_min,
+            missing_max=missing_max,
+            seed=seed,
+            path_to_optimal_mask=path_to_optimal_mask,
+        )
+
+        # Use sparse data as inputs and complete data as targets. Split sparse and complete data into training and validation sets.
+        # Scale or normlalize data according to statistics obtained from only training data. Optionally, shift inputs and targets.
+        (
+            train_input,
+            val_input,
+            train_target,
+            val_target,
+            train_min,
+            train_max,
+            train_mean,
+            train_std,
+        ) = split_and_scale_data(data=data_anomaly, missing_mask=missing_mask, train_val_split=train_val_split, scale_to=scale_to, shift=lead+i)
+        
+        ## Store inputs, targets and statistics.
+        
+        # For initial round, initialize storage for inputs.
+        # Need to cut initial inputs, to end up with same length for all steps:
+        if i == 0:            
+            train_input_all = train_input[lag-i:]
+            val_input_all = val_input[lag-i:]
+        
+        else:
+            train_input_all = np.concatenate([train_input_all,train_input[lag-i:]], axis=-1)
+            val_input_all = np.concatenate([val_input_all,val_input[lag-i:]], axis=-1)
+
+    return (
+        train_input_all,
+        val_input_all,
         train_target,
         val_target,
         train_min,
