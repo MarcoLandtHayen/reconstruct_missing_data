@@ -35,7 +35,7 @@ def build_unet_4conv(
     Parameters
     ----------
     input_shape: list
-        Contains triple: (latitude, longitude, 1), where trailing 1 denotes the number of channels.
+        Contains triple: (latitude, longitude, no. of channels).
     CNN_filters: np.ndarray of int
         Contains 4 numbers to specify the number of filters in each of the 4 convolutions.
     CNN_kernel_size: int

@@ -38,7 +38,7 @@ path_to_data = "climate_index_collection/data/raw/2022-08-22/"  # Full data
 model_config = "predict_unet_4conv"
 
 # Data loading and preprocessing:
-data_source_name='FOCI'
+data_source_name=sys.argv[1]
 input_features=[
     'sea-level-pressure', 
     'sea-surface-temperature', 
@@ -47,25 +47,19 @@ input_features=[
     'sea-surface-salinity', 
     'precipitation'
 ]
-target_feature='sea-surface-temperature'
-feature_short = 'sst'
+target_feature='precipitation'
+feature_short = 'prec'
 load_samples_from=0
-load_samples_to=6000
+load_samples_to=-1
 mask_type='fixed'
 missing_type='discrete'
 missing_values = [
-    0.999,
-    0.99,
-    0.95,
-    0.9,
-    0.75,
-    0.5,
-    0.0,
+    float(sys.argv[4]),
 ]
-seed=1
+seed=int(sys.argv[3])
 train_val_split=0.8
 scale_to='zero_one'
-shift=3
+shift=int(sys.argv[2])
 
 # To build, compile and train model:
 CNN_filters = [64, 128, 256, 512]  # [2,4,8,16] # Number of filters.
@@ -93,7 +87,8 @@ path = Path(
     + "_seed_"
     + str(seed)
 )
-os.makedirs(path, exist_ok=False)
+if missing_values[0] == 0.999:
+    os.makedirs(path, exist_ok=False)
 
 # Store parameters as json:
 parameters = {
@@ -106,7 +101,7 @@ parameters = {
     "load_samples_to": load_samples_to,
     "mask_type": mask_type,
     "missing_type": missing_type,
-    "missing_values": missing_values,        
+    "missing_values": [0.999,0.99,0.95,0.9,0.75,0.5,0.0],        
     "seed": seed,
     "train_val_split": train_val_split,
     "scale_to": scale_to,
@@ -119,8 +114,9 @@ parameters = {
     "batch_size": batch_size,
 }
 
-with open(path / "parameters.json", "w") as f:
-    dump(parameters, f)
+if missing_values[0] == 0.999:
+    with open(path / "parameters.json", "w") as f:
+        dump(parameters, f)
 
 
 # # Train models:
@@ -135,9 +131,9 @@ for i in range(len(missing_values)):
     
     # Rel. amount of missing values = 0.999 requires special treatment:
     if missing==0.999:
-        os.makedirs(path / "missing_" f"{int(missing*1000)}", exist_ok=False)
+        os.makedirs(path / "missing_" f"{int(missing*1000)}", exist_ok=True)
     else:
-        os.makedirs(path / "missing_" f"{int(missing*100)}", exist_ok=False)        
+        os.makedirs(path / "missing_" f"{int(missing*100)}", exist_ok=True)        
 
     # Prepare data:
     (
@@ -237,6 +233,3 @@ for i in range(len(missing_values)):
         np.save(path / "missing_" f"{int(missing*100)}" / "val_loss.npy", val_loss)
 
     
-
-    
-
