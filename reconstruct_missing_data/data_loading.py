@@ -130,7 +130,8 @@ VARNAME_MAPPING = {
         "PSL": "sea-level-pressure",
         "SST": "sea-surface-temperature",
         "Z3": "geopotential-height",
-        "TS": "surface-air-temperature",
+        "TS": "skin-surface-temperature",
+        "TREFHT": "surface-air-temperature"
         "SALT": "sea-surface-salinity",
         "PRECT": "precipitation",
     },
@@ -453,6 +454,7 @@ def prepare_univariate_data(
     seed=1, 
     path_to_optimal_mask='',
     train_val_split=0.8,
+    val_test_split=0.5,
     scale_to='zero_one',
     shift=0,
 ):
@@ -466,7 +468,7 @@ def prepare_univariate_data(
     Create mask for missing values fitting data dimensions.
     Missing values are masked as zero (zero-inflated).
     Optionally scale or normalize values, according to statistics obtained from training data.
-    Then apply mask for missing values and split data into training and validation sets.
+    Then apply mask for missing values and split data into training, validation and test sets.
     Existing NaN values are set to zero. Optionally, shift inputs and targets, if desired, 
     to simulate lead times for targets and time lagged inputs.
 
@@ -502,7 +504,9 @@ def prepare_univariate_data(
     path_to_optimal_mask: string
         Specify path and filename of the optimal mask to reload. Default: Empty string.
     train_val_split: float
-        Relative amount of training data. Default: 0.8.
+        Relative amount of training data from ALL data. Default: 0.8.
+    val_test_split: float
+        Relative amount of validation data from remaining data. Default: 0.5.
     scale_to: string
         Specifies the desired scaling. Choose to scale inputs to [-1,1] ('one_one') or [0,1] ('zero_one') or 'norm' to normalize inputs or 'no' scaling.
         Default: 'zero_one'.
@@ -511,8 +515,8 @@ def prepare_univariate_data(
         
     Returns
     -------
-    train_input, val_input, train_target, val_target: numpy.ndarray
-        Data sets containing training and validation inputs and targets, respectively.
+    train_input, val_input, test_input, train_target, val_target, test_target: numpy.ndarray
+        Data sets containing training, validation and test inputs and targets, respectively.
     train_min, train_max, train_mean, train_std: float
         Statistics obtained from training data: Minimum, maximum, mean and standard deviation, respectively.
     """
@@ -547,11 +551,25 @@ def prepare_univariate_data(
         train_std,
     ) = split_and_scale_data(data=data_anomaly, missing_mask=missing_mask, train_val_split=train_val_split, scale_to=scale_to, shift=shift)
     
+    # Split validation inputs and targets into validation and test sets:
+    
+    # Get number of validation samples:
+    n_val = int(val_test_split * len(val_input))
+
+    # Split former validation data into new validation and test sets:
+    val_input_split = val_input[:n_val]
+    test_input_split = val_input[n_val:]
+    val_target_split = val_target[:n_val]
+    test_target_split = val_target[n_val:]
+
+    # Return data including test sets:    
     return (
         train_input,
-        val_input,
+        val_input_split,
+        test_input_split,
         train_target,
-        val_target,
+        val_target_split,
+        test_target_split,
         train_min,
         train_max,
         train_mean,
@@ -573,6 +591,7 @@ def prepare_multivariate_data(
     seed=1, 
     path_to_optimal_masks=['',''],
     train_val_split=0.8,
+    val_test_split=0.5,
     scale_to='zero_one',
     shift=0,
 ):
@@ -627,6 +646,8 @@ def prepare_multivariate_data(
         Specify paths and filenames of the optimal masks to reload, separately for each input feature. Default: List of empty strings.
     train_val_split: float
         Relative amount of training data. Default: 0.8.
+    val_test_split: float
+        Relative amount of validation data from remaining data. Default: 0.5.
     scale_to: string
         Specifies the desired scaling. Choose to scale inputs to [-1,1] ('one_one') or [0,1] ('zero_one') or 'norm' to normalize inputs or 'no' scaling.
         Default: 'zero_one'.
@@ -635,8 +656,8 @@ def prepare_multivariate_data(
         
     Returns
     -------
-    train_input, val_input, train_target, val_target: numpy.ndarray
-        Data sets containing training and validation inputs and targets, respectively.
+    train_input, val_input, test_input, train_target, val_target, test_target: numpy.ndarray
+        Data sets containing training, validation and test inputs and targets, respectively.
     train_min, train_max, train_mean, train_std: float
         Statistics obtained from training data: Minimum, maximum, mean and standard deviation, respectively, for all input features.
     """
@@ -704,11 +725,24 @@ def prepare_multivariate_data(
             train_mean_all.append(train_mean)
             train_std_all.append(train_std)
 
+    # Split validation inputs and targets into validation and test sets:
+    
+    # Get number of validation samples:
+    n_val = int(val_test_split * len(val_input_all))
+
+    # Split former validation data into new validation and test sets:
+    val_input_all_split = val_input_all[:n_val]
+    test_input_all_split = val_input_all[n_val:]
+    val_target_final_split = val_target_final[:n_val]
+    test_target_final_split = val_target_final[n_val:]
+            
     return (
         train_input_all,
-        val_input_all,
+        val_input_all_split,
+        test_input_all_split,
         train_target_final,
-        val_target_final,
+        val_target_final_split,
+        test_target_final_split,
         np.array(train_min_all),
         np.array(train_max_all),
         np.array(train_mean_all),
@@ -729,6 +763,7 @@ def prepare_timelagged_data(
     seed=1, 
     path_to_optimal_mask='',
     train_val_split=0.8,
+    val_test_split=0.5,
     scale_to='zero_one',
     lag=0,
     lead=0,
@@ -783,6 +818,8 @@ def prepare_timelagged_data(
         Specify path and filename of the optimal mask to reload. Default: Empty string.
     train_val_split: float
         Relative amount of training data. Default: 0.8.
+    val_test_split: float
+        Relative amount of validation data from remaining data. Default: 0.5.
     scale_to: string
         Specifies the desired scaling. Choose to scale inputs to [-1,1] ('one_one') or [0,1] ('zero_one') or 'norm' to normalize inputs or 'no' scaling.
         Default: 'zero_one'.
@@ -793,8 +830,8 @@ def prepare_timelagged_data(
         
     Returns
     -------
-    train_input, val_input, train_target, val_target: numpy.ndarray
-        Data sets containing training and validation inputs and targets, respectively.
+    train_input, val_input, test_input, train_target, val_target, test_target: numpy.ndarray
+        Data sets containing training, validation and test inputs and targets, respectively.
     train_min, train_max, train_mean, train_std: float
         Statistics obtained from training data: Minimum, maximum, mean and standard deviation, respectively, for all input features.
     """
@@ -845,11 +882,25 @@ def prepare_timelagged_data(
             train_input_all = np.concatenate([train_input_all,train_input[lag-i:]], axis=-1)
             val_input_all = np.concatenate([val_input_all,val_input[lag-i:]], axis=-1)
 
+            
+    # Split validation inputs and targets into validation and test sets:
+    
+    # Get number of validation samples:
+    n_val = int(val_test_split * len(val_input_all))
+
+    # Split former validation data into new validation and test sets:
+    val_input_all_split = val_input_all[:n_val]
+    test_input_all_split = val_input_all[n_val:]
+    val_target_split = val_target[:n_val]
+    test_target_split = val_target[n_val:]
+            
     return (
         train_input_all,
-        val_input_all,
+        val_input_all_split,
+        test_input_all_split,
         train_target,
-        val_target,
+        val_target_split,
+        test_target_split,
         train_min,
         train_max,
         train_mean,
