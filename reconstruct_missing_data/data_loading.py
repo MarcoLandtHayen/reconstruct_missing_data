@@ -131,7 +131,7 @@ VARNAME_MAPPING = {
         "SST": "sea-surface-temperature",
         "Z3": "geopotential-height",
         "TS": "skin-surface-temperature",
-        "TREFHT": "surface-air-temperature"
+        "TREFHT": "surface-air-temperature",
         "SALT": "sea-surface-salinity",
         "PRECT": "precipitation",
     },
