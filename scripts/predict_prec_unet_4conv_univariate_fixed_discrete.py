@@ -59,7 +59,7 @@ CNN_filters = [64, 128, 256, 512]  # [2,4,8,16] # Number of filters.
 CNN_kernel_size = 5  # Kernel size
 learning_rate = 0.00005
 loss_function = "mse"
-epochs = 60
+epochs = 100
 batch_size = 10
 
 
