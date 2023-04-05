@@ -234,3 +234,51 @@ def atlantic_multidecadal_oscillation(data_set):
     AMO.attrs["long_name"] = "atlantic_multidecadal_oscillation"
 
     return AMO
+
+
+def sahel_precipitation(data_set):
+    """Calculate the Sahel precipitation anomaly index (PREC_SAHEL)
+
+    Following http://research.jisao.washington.edu/data/sahel/
+    the Sahel rainy season is centered on June through October. The Sahel precipitation index in its original form gives a measure
+    for year to year variability of Sahel rainfall as mean over this rainy season.
+
+    Here we compute the Sahel precipitation anomaly index as monthly anomalies of rainfall in the Sahel zone.
+    As defined in https://doi.org/10.1175/JAMC-D-13-0181.1
+    the Sahel zone is assumed to be bordered by 10 to 20°N and 20°W to 10°E.
+
+    Computation is done as follows:
+    1. Compute area averaged total precipitation from Sahel zone.
+    2. Compute monthly climatology for area averaged total precipitation from Sahel zone.
+    3. Subtract climatology from area averaged total precipitation time series to obtain anomalies.
+    4. Normalize anomalies by its standard deviation over the climatological period.
+
+
+    Parameters
+    ----------
+    data_set: xarray.DataSet
+        Dataset containing an precipitation field.
+    
+    Returns
+    -------
+    xarray.DataArray
+        Time series containing the PREC_SAHEL index.
+
+    """
+    precip = area_mean_weighted(
+        dobj=data_set,
+        lat_south=10,
+        lat_north=20,
+        lon_west=340,
+        lon_east=10,
+    )
+
+    climatology = precip.groupby("time.month").mean("time")
+
+    std_dev = precip.std("time")
+
+    PREC_SAHEL = (precip.groupby("time.month") - climatology) / std_dev
+    PREC_SAHEL = PREC_SAHEL.rename("PREC_SAHEL")
+    PREC_SAHEL.attrs["long_name"] = "sahel_precipitation"
+
+    return PREC_SAHEL
