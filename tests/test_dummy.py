@@ -3,10 +3,10 @@ import sys
 
 import pytest
 
-from dummy_module import dummy_foo
+from reconstruct_missing_data.dummy_module import dummy_foo
 
 
-sys.path.append("./reconstruct_missing_data")
+# sys.path.append("./reconstruct_missing_data")
 
 ## Working on nesh with Container image reconstruct_missing_data_latest.sif:
 # from reconstruct_missing_data.dummy_module import dummy_foo
