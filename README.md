@@ -32,6 +32,21 @@ $ python -m pip install -e .
 ```
 to have a local editable installation of the package.
 
+## Container Image
+
+There's a container image: https://hub.docker.com/r/mlandthayen/reconstruct_missing_data
+
+### Use with Docker
+
+You can use it wherever Docker is installed by running:
+```shell
+$ docker pull mlandthayen/reconstruct_missing_data:<tag>
+$ docker run -p 8888:8888 --rm -it -v $PWD:/work -w /work mlandthayen/reconstruct_missing_data:<tag> jupyter lab --ip=0.0.0.0
+```
+
+and open the URL starting on `http://127.0.0.1...`.
+Here, `<tag>` can either be `latest` or a more specific tag.
+
 --------
 
 <p><small>Project based on the <a target="_blank" href="https://github.com/jbusecke/cookiecutter-science-project">cookiecutter science project template</a>.</small></p>
