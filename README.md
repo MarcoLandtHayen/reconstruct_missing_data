@@ -1,5 +1,7 @@
 reconstruct_missing_data
 ==============================
+[![Build Status](https://github.com/MarcoLandtHayen/climate_index_collection/workflows/Tests/badge.svg)](https://github.com/MarcoLandtHayen/climate_index_collection/actions)
+[![codecov](https://codecov.io/gh/MarcoLandtHayen/climate_index_collection/branch/main/graph/badge.svg)](https://codecov.io/gh/MarcoLandtHayen/climate_index_collection)
 [![License:MIT](https://img.shields.io/badge/License-MIT-lightgray.svg?style=flt-square)](https://opensource.org/licenses/MIT)
 [![Docker Image Version (latest by date)](https://img.shields.io/docker/v/mlandthayen/reconstruct_missing_data?label=DockerHub)](https://hub.docker.com/r/mlandthayen/reconstruct_missing_data/tags)
 
