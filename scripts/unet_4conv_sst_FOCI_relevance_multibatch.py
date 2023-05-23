@@ -195,7 +195,7 @@ parameters = {
     "max_acc_rel_loss_reduction": max_acc_rel_loss_reduction,
 }
 
-with open(path_to_store_results / "parameters.json", "w") as f:
+with open(path_to_store_results / "_parameters.json", "w") as f:
     dump(parameters, f)
 
 # ################

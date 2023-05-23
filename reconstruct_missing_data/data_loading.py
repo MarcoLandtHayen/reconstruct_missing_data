@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-sys.path.append("./reconstruct_missing_data")
 from timestamp_handling import fix_monthly_time_stamps
 
 from shapely.affinity import translate
