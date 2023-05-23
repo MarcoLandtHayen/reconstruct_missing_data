@@ -2,7 +2,7 @@ import numpy as np
 import scipy as sp
 import xarray as xr
 
-from data_loading import (
+from .data_loading import (
     mean_unweighted,
     area_mean_weighted,
     area_mean_weighted_polygon_selection,
