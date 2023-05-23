@@ -58,9 +58,9 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 # Specify experiment:
 model_config = 'unet_4conv'
-feature = 'sea-level-pressure' # Choose either 'sea-level-pressure' or 'sea-surface-temperature' as feature.
-feature_short = 'slp' # Free to set short name, to store results, e.g. 'slp' and 'sst'.
-source = 'FOCI' # Choose Earth System Model, either 'FOCI' or 'CESM'.
+feature = 'sea-surface-temperature' # Choose either 'sea-level-pressure' or 'sea-surface-temperature' as feature.
+feature_short = 'sst' # Free to set short name, to store results, e.g. 'slp' and 'sst'.
+source = 'CESM' # Choose Earth System Model, either 'FOCI' or 'CESM'.
 
 mask_type = 'variable'
 missing_type = 'range_0_100'
@@ -103,15 +103,78 @@ max_patch_num = 50
 # Specify threshold for maximum accumulated rel. loss reduction (or set 1.0, for NO threshold):
 max_acc_rel_loss_reduction = 0.9   
 
-###############
+
+# ################ relevance_2
+# # Specify name of experiment, to store results accordingly in a separate folder:
+# exp_name = '/relevance_2'
+
+# # Set sample number to start from:
+# start_sample = 9598
+
+# # Define number of validation samples to consider:
+# n_samples = 2
+
+# # Define patch size:
+# patch_size = 1
+
+# # # Optionally define stopping criteria:
+
+# # Specify maximum number of patches to include (or set -1, to include ALL patches):
+# max_patch_num = 184
+
+# # Specify threshold for maximum accumulated rel. loss reduction (or set 1.0, for NO threshold):
+# max_acc_rel_loss_reduction = 1.0
+
+# ################ relevance_3
+# # Specify name of experiment, to store results accordingly in a separate folder:
+# exp_name = '/relevance_3'
+
+# # Set sample number to start from:
+# start_sample = 9589
+
+# # Define number of validation samples to consider:
+# n_samples = 1
+
+# # Define patch size:
+# patch_size = 1
+
+# # # Optionally define stopping criteria:
+
+# # Specify maximum number of patches to include (or set -1, to include ALL patches):
+# max_patch_num = 922
+
+# # Specify threshold for maximum accumulated rel. loss reduction (or set 1.0, for NO threshold):
+# max_acc_rel_loss_reduction = 1.0
+
+# ################ relevance_4_5_6_7_8
+# # Specify name of experiment, to store results accordingly in a separate folder:
+# exp_name = '/relevance_8'
+
+# # Set sample number to start from:
+# start_sample = 0
+
+# # Define number of validation samples to consider:
+# n_samples = 24
+
+# # Define patch size:
+# patch_size = 3
+
+# # Optionally define stopping criteria:
+
+# # Specify maximum number of patches to include (or set -1, to include ALL patches):
+# max_patch_num = -1
+
+# # Specify threshold for maximum accumulated rel. loss reduction (or set 1.0, for NO threshold):
+# max_acc_rel_loss_reduction = 1.0
+
+# # ################
 
 # Get path to store results to:
 path_to_store_results = Path('GitGeomar/marco-landt-hayen/reconstruct_missing_data_results/'+model_config+'_'+feature_short+'_'+source+'_'
                       +mask_type+'_'+missing_type+'_factor_'+str(augmentation_factor)+run+exp_name)
 
 # Try to create folder for later saving results, avoid overwriting existing results:
-if start_sample == 0:
-    os.makedirs(path_to_store_results, exist_ok=False)
+# os.makedirs(path_to_store_results, exist_ok=False)
 
 # Store parameters as json:
 parameters = {
