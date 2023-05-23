@@ -1,7 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 
-#import cftime
+import cftime
 import numpy as np
 import pytest
 
