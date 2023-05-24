@@ -49,6 +49,12 @@ $ docker run -p 8888:8888 --rm -it -v $PWD:/work -w /work mlandthayen/reconstruc
 and open the URL starting on `http://127.0.0.1...`.
 Here, `<tag>` can either be `latest` or a more specific tag.
 
+### Table of contents
+
+This repository contains the framework for training U-Net models on geospatial data. Furthermore, the examination and summary of the results is provided in several notebooks in the subfolder ```/notebooks```. The experiments have been done on the [HPC system of Christian-Albrechts-Universität zu Kiel](https://www.rz.uni-kiel.de/en/our-portfolio/hiperf/nesh). For completness, rudimentary scripts are included in the subfolder ```/scripts```, however, customized to the author's local environment.
+
+The results (e.g., trained models) are stored in a separate [Git repository](https://git.geomar.de/marco-landt-hayen/reconstruct_missing_data_results) allowing for large file storage.
+
 --------
 
 <p><small>Project based on the <a target="_blank" href="https://github.com/jbusecke/cookiecutter-science-project">cookiecutter science project template</a>.</small></p>
