@@ -4,12 +4,16 @@ channels:
 dependencies:
   - python=3.7
   ############## These will have to be adjusted to your specific project
+  - click
+  - dask
   - numpy
+  - netcdf4
   - scipy
   - xarray
+  - shapely
   ##############
   - pytest
   - pip:
-    - codecov
-    - pytest-cov
-    - coverage[toml]
+      - codecov
+      - pytest-cov
+      - coverage[toml]
