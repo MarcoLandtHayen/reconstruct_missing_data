@@ -49,7 +49,7 @@ $ docker run -p 8888:8888 --rm -it -v $PWD:/work -w /work mlandthayen/reconstruc
 and open the URL starting on `http://127.0.0.1...`.
 Here, `<tag>` can either be `latest` or a more specific tag.
 
-### Table of contents
+## Table of contents
 
 This repository contains the framework for training U-Net models on geospatial data. Furthermore, the examination and summary of the results is provided in several notebooks in the subfolder ```/notebooks```. The experiments have been done on the [HPC system of Christian-Albrechts-Universität zu Kiel](https://www.rz.uni-kiel.de/en/our-portfolio/hiperf/nesh). For completeness, rudimentary scripts are included in the subfolder ```/scripts```, however, customized to the author's local environment.
 
