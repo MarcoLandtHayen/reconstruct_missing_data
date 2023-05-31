@@ -5,7 +5,6 @@ reconstruct_missing_data
 [![License:MIT](https://img.shields.io/badge/License-MIT-lightgray.svg?style=flt-square)](https://opensource.org/licenses/MIT)
 [![Docker Image Version (latest by date)](https://img.shields.io/docker/v/mlandthayen/reconstruct_missing_data?label=DockerHub)](https://hub.docker.com/r/mlandthayen/reconstruct_missing_data/tags)
 
-
 Reconstruct complete two-dimensional geospatial data from sparse inputs.
 As data, we use the output of control simulations from two Earth System Models (ESMs):
 The Flexible Ocean and Climate Infrastructure (FOCI) and the Whole Atmosphere Community Climate Model as extension of the Community Earth System Model (CESM) are both coupled, global climate models that provide state-of-the-art computer simulations of the past, present and future states of the Earth system. Here, we use the output of FOCI and CESM control simulations over 1,000 and 999 years, respectively. In particular, we work with the following two-dimensional fields on latitude-longitude grids:
