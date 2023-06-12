@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from .timestamp_handling import fix_monthly_time_stamps
+from timestamp_handling import fix_monthly_time_stamps
 
 from shapely.affinity import translate
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
