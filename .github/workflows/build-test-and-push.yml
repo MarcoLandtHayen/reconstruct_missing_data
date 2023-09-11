@@ -27,7 +27,7 @@ jobs:
           echo "CALVER_TARGET=${CALVER_TARGET}" >> $GITHUB_ENV
           echo "LATEST_TARGET=${LATEST_TARGET}" >> $GITHUB_ENV
       - name: Checkout Github repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Build Docker image
         uses: docker/build-push-action@v4
         with:
